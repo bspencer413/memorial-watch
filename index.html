@@ -86,9 +86,11 @@ function App() {
     const t = localStorage.getItem('token');
     const u = localStorage.getItem('user');
     if (t && u) {
+      setUser(u);
       setAuth(true);
-      setUser(JSON.parse(u));
+      setPage('home');
       loadWatchlist();
+
     }
   }, []);
 
