@@ -171,7 +171,7 @@ function App() {
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
       if (!nameOverride) setNw({ name: '', location: '', dob: '' });
-      alert('✅ Added to Watchlist!');
+      alert('Added to Watchlist!');
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -216,28 +216,22 @@ function App() {
       );
       const wikiData = await wikiRes.json();
       if (wikiData.extract) {
-      const extract = wikiData.extract || '';
-      const description = wikiData.description || '';
-  
- // Wikipedia always starts deceased bios with "Name (born X – died Y)" or "Name (YYYY–YYYY)"
-      const hasDeathInBrackets = /\(\d{4}.*?[-–—].*?\d{4}\)/.test(extract);
-      const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
-      const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
-      const hasDeathDate = !!wikiData.death_date;
-  
-      const isDeceased = hasDeathDate || hasDeathInBrackets || diedInExtract || diedInDescription;
-  
-            setWikiProfile({
-            title: wikiData.title,
-            extract: extract,
-            thumbnail: wikiData.thumbnail?.source,
-            birthDate: wikiData.birth_date || null,
-            deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
-            description: description,
-          });
-        }
-        }
-
+        const extract = wikiData.extract || '';
+        const description = wikiData.description || '';
+        const hasDeathInBrackets = /\(\d{4}.*?[-–—].*?\d{4}\)/.test(extract);
+        const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
+        const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
+        const hasDeathDate = !!wikiData.death_date;
+        const isDeceased = hasDeathDate || hasDeathInBrackets || diedInExtract || diedInDescription;
+        setWikiProfile({
+          title: wikiData.title,
+          extract: extract,
+          thumbnail: wikiData.thumbnail?.source,
+          birthDate: wikiData.birth_date || null,
+          deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
+          description: description,
+        });
+      }
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -397,7 +391,7 @@ function App() {
                   <span className="text-white font-black tracking-widest text-sm">
                     {wikiProfile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
                   </span>
-                  {wikiProfile.deathDate && (
+                  {wikiProfile.deathDate && wikiProfile.deathDate !== 'deceased' && (
                     <span className="text-white/80 text-xs ml-auto">Died: {wikiProfile.deathDate}</span>
                   )}
                 </div>
@@ -423,11 +417,11 @@ function App() {
                   {!wikiProfile.deathDate && (
                     <button
                       onClick={() => addWatch(wikiProfile.title)}
-                      className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2">
+                      className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
                       <PlusIcon /> Add to Watchlist
                     </button>
                   )}
-                  <div className="mt-3 p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
+                  <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
                     <p className="text-purple-200 text-xs leading-relaxed">
                       💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
                     </p>
