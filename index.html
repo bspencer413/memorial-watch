@@ -218,11 +218,14 @@ function App() {
       if (wikiData.extract) {
         const extract = wikiData.extract || '';
         const description = wikiData.description || '';
-        const hasDeathInBrackets = /\(\d{4}.*?[-–—].*?\d{4}\)/.test(extract);
+        const hasDeathInBrackets = /\(\d{4}.{0,20}\d{4}\)/.test(extract);
+        const hasYearsInDescription = /\(\d{4}.*?\d{4}\)/.test(description);
+        const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
         const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
         const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
         const hasDeathDate = !!wikiData.death_date;
-        const isDeceased = hasDeathDate || hasDeathInBrackets || diedInExtract || diedInDescription;
+        const isDeceased = hasDeathDate || hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
+
         setWikiProfile({
           title: wikiData.title,
           extract: extract,
