@@ -216,18 +216,26 @@ function App() {
       );
       const wikiData = await wikiRes.json();
       if (wikiData.extract) {
-        const extract = wikiData.extract || '';
-        const died = wikiData.death_date ||
-          (/died|death|passed away/i.test(extract) ? 'deceased' : null);
-        setWikiProfile({
-          title: wikiData.title,
-          extract: extract,
-          thumbnail: wikiData.thumbnail?.source,
-          birthDate: wikiData.birth_date || null,
-          deathDate: died,
-          description: wikiData.description || '',
-        });
-      }
+  const extract = wikiData.extract || '';
+  const description = wikiData.description || '';
+  
+  const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
+  const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
+  const hasDeathDate = !!wikiData.death_date;
+  const yearPattern = /\(\w+ \d{4}.*?[–\-—].*?(\d{4})\)/.test(extract);
+  
+  const isDeceased = hasDeathDate || diedInExtract || diedInDescription || yearPattern;
+  
+  setWikiProfile({
+    title: wikiData.title,
+    extract: extract,
+    thumbnail: wikiData.thumbnail?.source,
+    birthDate: wikiData.birth_date || null,
+    deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
+    description: description,
+  });
+}
+
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
