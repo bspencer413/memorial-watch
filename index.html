@@ -154,8 +154,9 @@ function App() {
     setWikiProfile(null);
   };
 
-  const addWatch = async () => {
-    if (!nw.name.trim()) return;
+  const addWatch = async (nameOverride) => {
+    const name = nameOverride || nw.name;
+    if (!name.trim()) return;
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -165,12 +166,12 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(nw)
+        body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
       });
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
-      setNw({ name: '', location: '', dob: '' });
-      alert('✅ Added!');
+      if (!nameOverride) setNw({ name: '', location: '', dob: '' });
+      alert('✅ Added to Watchlist!');
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -215,12 +216,15 @@ function App() {
       );
       const wikiData = await wikiRes.json();
       if (wikiData.extract) {
+        const extract = wikiData.extract || '';
+        const died = wikiData.death_date ||
+          (/died|death|passed away/i.test(extract) ? 'deceased' : null);
         setWikiProfile({
           title: wikiData.title,
-          extract: wikiData.extract,
+          extract: extract,
           thumbnail: wikiData.thumbnail?.source,
           birthDate: wikiData.birth_date || null,
-          deathDate: wikiData.death_date || null,
+          deathDate: died,
           description: wikiData.description || '',
         });
       }
@@ -323,7 +327,7 @@ function App() {
                 <input type="text" placeholder="Full Name *" value={nw.name} onChange={(e) => setNw({...nw, name: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
                 <input type="text" placeholder="Location" value={nw.location} onChange={(e) => setNw({...nw, location: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
                 <input type="date" value={nw.dob} onChange={(e) => setNw({...nw, dob: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
-                <button onClick={addWatch} disabled={loading} className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
+                <button onClick={() => addWatch()} disabled={loading} className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
                   <PlusIcon /> {loading ? 'Adding...' : 'Add to Watchlist'}
                 </button>
               </div>
@@ -364,7 +368,7 @@ function App() {
               <h2 className="text-xl font-bold mb-4">Search</h2>
               <div className="space-y-4">
                 <input type="text" placeholder="Name *" value={sName}
-                  onChange={(e) => setSName(e.target.value)}
+                  onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); }}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
                 <input type="text" placeholder="Location (optional)" value={sLoc}
@@ -403,10 +407,17 @@ function App() {
                       )}
                     </div>
                   </div>
-                  <p className="text-purple-100 text-base leading-relaxed">
+                  <p className="text-purple-100 text-base leading-relaxed mb-4">
                     {wikiProfile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
                   </p>
-                  <div className="mt-4 p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
+                  {!wikiProfile.deathDate && (
+                    <button
+                      onClick={() => addWatch(wikiProfile.title)}
+                      className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2">
+                      <PlusIcon /> Add to Watchlist
+                    </button>
+                  )}
+                  <div className="mt-3 p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
                     <p className="text-purple-200 text-xs leading-relaxed">
                       💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
                     </p>
