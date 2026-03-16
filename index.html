@@ -18,7 +18,6 @@
 const { useState, useEffect } = React;
 
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
-const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/P1250389.jpeg';
 
 const HomeIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,15 +85,11 @@ const PageWrapper = ({ children }) => (
   <div className="min-h-screen pb-20 relative" style={{
     background: 'linear-gradient(to bottom, #4a1942 0%, #8b1a4a 20%, #c0392b 45%, #e74c3c 60%, #e67e22 75%, #f39c12 88%, #f1c40f 100%)',
   }}>
-    <div className="absolute inset-0 bg-gray-50/88" />
+    <div className="absolute inset-0" style={{ backgroundColor: 'rgba(249,250,251,0.88)' }} />
     <div className="relative z-10">
       {children}
     </div>
   </div>
-);
-
-const SUNSET_BG = '';
-
 );
 
 function isDeceasedCheck(extract, description, deathDate, type) {
