@@ -20,6 +20,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
+const APP_VERSION = '0.9.1';
 
 const HomeIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -626,6 +627,9 @@ function App() {
                 </div>
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <span className="text-blue-800">🔄 Wikipedia: Connected</span>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <span className="text-purple-800">📱 Version {APP_VERSION}</span>
                 </div>
               </div>
             </div>
