@@ -19,6 +19,7 @@ const { useState, useEffect } = React;
 
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
+const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
 
 const HomeIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -330,11 +331,12 @@ function App() {
 
   const WikiCard = ({ profile, showAddButton }) => {
     const alreadyWatching = isOnWatchlist(profile.title);
+    const isDisambig = profile.isDisambiguation;
     return (
       <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
-        <div className={`px-5 py-3 flex items-center gap-3 ${profile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
+        <div className={`px-5 py-3 flex items-center gap-3 ${profile.deathDate ? 'bg-gray-600' : isDisambig ? 'bg-yellow-500' : 'bg-green-600'}`}>
           <span className="text-white font-black tracking-widest text-sm">
-            {profile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
+            {profile.deathDate ? '⚫ DECEASED' : isDisambig ? '🟡 UNSURE' : '🟢 ALIVE'}
           </span>
           {profile.deathDate && profile.deathDate !== 'deceased' && (
             <span className="text-white/80 text-xs ml-auto">Died: {profile.deathDate}</span>
@@ -349,17 +351,17 @@ function App() {
               <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
             )}
             <div className="flex-1">
-              <h2 className="text-white text-xl font-bold mb-1">{profile.title}</h2>
-              <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>
+              <h2 className="text-white text-xl font-bold mb-1">{isDisambig ? profile.title.replace(' (disambiguation)', '') : profile.title}</h2>
+              {!isDisambig && <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>}
               {profile.birthDate && (
                 <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>
               )}
             </div>
           </div>
-          {profile.isDisambiguation ? (
+          {isDisambig ? (
             <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3">
               <p className="text-yellow-200 text-sm text-center">
-                ⚠️ Multiple people match this name — try a more specific name for better results
+                ⚠️ Multiple people share this name — try adding a middle name, birth year, or location for a more specific result
               </p>
             </div>
           ) : (
@@ -451,9 +453,9 @@ function App() {
 
         {page === 'home' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg">
+            <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg text-center">
               <h2 className="text-3xl font-bold mb-1">Dead or Alive</h2>
-              <p className="text-2xl font-bold text-white/90 mb-3 text-center tracking-wide">Memorial Watch</p>
+              <p className="text-2xl font-bold text-white/90 mb-3 tracking-wide">Memorial Watch</p>
               <p className="text-white/90">Welcome, {user?.name}! 👋</p>
               <p className="text-white/80 text-sm">Monitoring {watchlist.length} people</p>
             </div>
@@ -657,12 +659,18 @@ function App() {
                 <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memorial Watch, please contact us with your suggestions.</p>
               </div>
               <div className="mt-6 pt-6 border-t border-gray-100">
-                <p className="font-bold text-gray-800">Bill Spencer</p>
-                <p className="text-purple-500 italic">Idea Hamster 🐹</p>
-                <a href="mailto:contact@memorialwatch.com"
-                  className="text-purple-500 text-sm mt-2 block">
-                  contact@memorialwatch.com
-                </a>
+                <div className="flex items-center gap-4">
+                  <img src={BILL_PHOTO} alt="Bill Spencer"
+                    className="w-20 h-20 rounded-full object-cover border-2 border-purple-400 shadow-lg" />
+                  <div>
+                    <p className="font-bold text-gray-800 text-lg">Bill Spencer</p>
+                    <p className="text-purple-500 italic">Idea Hamster 🐹</p>
+                    <a href="mailto:contact@memorialwatch.com"
+                      className="text-purple-500 text-sm mt-1 block">
+                      contact@memorialwatch.com
+                    </a>
+                  </div>
+                </div>
               </div>
               <BackButton onClick={() => setPage('settings')} />
             </div>
