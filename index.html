@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '0.9.5';
+const APP_VERSION = '0.9.6';
 
 const toTitleCase = (str) => {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
@@ -98,6 +98,7 @@ const PageWrapper = ({ children }) => (
     minHeight: '100dvh',
     width: '100%',
     position: 'relative',
+    paddingTop: '1rem',
     paddingBottom: '5rem',
     backgroundImage: `url(${SUNSET_BG})`,
     backgroundSize: 'cover',
@@ -143,6 +144,7 @@ function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [sName, setSName] = useState('');
   const [sLoc, setSLoc] = useState('');
+  const [sBirthYear, setSBirthYear] = useState('');
   const [nw, setNw] = useState({ name: '', location: '', birthYear: '' });
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -229,6 +231,7 @@ function App() {
   const clearSearch = () => {
     setSName('');
     setSLoc('');
+    setSBirthYear('');
     setWikiProfile(null);
     setResults([]);
   };
@@ -301,9 +304,9 @@ function App() {
       });
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
-      if (!nameOverride) setNw({ name: '', location: '', birthYear: '' });
-      clearSearch();
-      setWatchlistWiki(null);
+      setNw({ name: '', location: '', birthYear: '' });
+      // Don't clear watchlistWiki here — let it stay visible
+      // It will clear when user types a new name
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -593,7 +596,7 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h2 className="text-xl font-bold mb-1">Search</h2>
-              <p className="text-gray-500 text-sm mb-4">Enter a first and last name to search</p>
+              <p className="text-gray-500 text-sm mb-4">Search to find people that matter to you</p>
               <div className="space-y-4">
                 <input
                   type="text"
@@ -609,6 +612,15 @@ function App() {
                   value={sLoc}
                   onChange={(e) => setSLoc(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
+                />
+                <input
+                  type="text"
+                  placeholder="Birth Year (optional, e.g. 1952)"
+                  value={sBirthYear}
+                  onChange={(e) => setSBirthYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onKeyPress={(e) => e.key === 'Enter' && doSearch()}
+                  maxLength={4}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
                 />
                 <div className="flex gap-3">
