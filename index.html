@@ -86,9 +86,10 @@ const PageWrapper = ({ children }) => (
   <div className="min-h-screen pb-20 relative" style={{
     backgroundImage: `url(${SUNSET_BG})`,
     backgroundSize: 'cover',
-    backgroundPosition: 'center center',
+    backgroundPosition: 'center bottom',
     backgroundRepeat: 'no-repeat',
     backgroundAttachment: 'scroll',
+    WebkitBackgroundSize: 'cover',
   }}>
     <div className="absolute inset-0 bg-gray-50/90" />
     <div className="relative z-10">
