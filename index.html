@@ -183,8 +183,11 @@ function App() {
         description: description,
       });
       if (isDeceased) {
-        setLoading(false);
-        return;
+  setNw({ name: '', location: '', dob: '' });
+  setLoading(false);
+  return;
+}
+
       }
     }
     const token = localStorage.getItem('token');
