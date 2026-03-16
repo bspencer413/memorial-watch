@@ -425,4 +425,266 @@ function App() {
               </button>
             </div>
             <div className="bg-white rounded-2xl p-6 shadow-lg">
-              <p
+              <p className="text-gray-600 text-base italic leading-relaxed text-center">
+                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+              </p>
+            </div>
+          </div>
+        )}
+
+        {page === 'watchlist' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Add to Watchlist</h2>
+              <div className="space-y-4">
+                <input type="text" placeholder="Full Name *" value={nw.name}
+                  onChange={(e) => { setNw({...nw, name: e.target.value}); setWatchlistWiki(null); }}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <input type="text" placeholder="Location" value={nw.location}
+                  onChange={(e) => setNw({...nw, location: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <input type="date" value={nw.dob}
+                  onChange={(e) => setNw({...nw, dob: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <button onClick={() => addWatch()} disabled={loading}
+                  className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
+                  <PlusIcon /> {loading ? 'Checking...' : 'Add to Watchlist'}
+                </button>
+              </div>
+            </div>
+            {watchlistWiki && <WikiCard profile={watchlistWiki} showAddButton={false} />}
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Your Watchlist ({watchlist.length})</h2>
+              {watchlist.length === 0 ? (
+                <p className="text-gray-500 text-center py-8">No one on your watchlist yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {watchlist.map(w => (
+                    <div key={w.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{w.name}</h3>
+                        <div className="text-sm text-gray-600">
+                          {w.location && <span>{w.location}</span>}
+                          {w.dob && <span> • DOB: {w.dob}</span>}
+                        </div>
+                        <div className="flex items-center gap-1 mt-2">
+                          <CheckIcon />
+                          <span className="text-xs text-green-600">Active</span>
+                        </div>
+                      </div>
+                      <button onClick={() => delWatch(w.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {page === 'search' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Search</h2>
+              <div className="space-y-4">
+                <input type="text" placeholder="Name *" value={sName}
+                  onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); }}
+                  onKeyPress={(e) => e.key === 'Enter' && doSearch()}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <input type="text" placeholder="Location (optional)" value={sLoc}
+                  onChange={(e) => setSLoc(e.target.value)}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <button onClick={doSearch} disabled={loading}
+                  className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
+                  <SearchIcon /> {loading ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+            {wikiProfile && !loading && <WikiCard profile={wikiProfile} showAddButton={true} />}
+            {results.length > 0 && (
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
+                <h2 className="text-xl font-bold mb-4">Death Records ({results.length})</h2>
+                <div className="space-y-3">
+                  {results.map(r => (
+                    <div key={r.id} className="p-4 border rounded-lg">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-lg">{r.name}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs ${r.confidence === 'high' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {r.confidence}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        {r.age && <p>Age: {r.age}</p>}
+                        <p>Location: {r.location || 'Unknown'}</p>
+                        <p>Date: {r.date || 'Unknown'}</p>
+                        <p>Source: {r.source}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {page === 'settings' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Account</h2>
+              <div className="p-3 bg-gray-50 rounded-lg mb-4">
+                <p className="font-medium">{user?.email}</p>
+              </div>
+              <div className="space-y-3">
+                <button onClick={() => setPage('about')}
+                  className="w-full py-3 bg-purple-50 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
+                  ℹ️ About Memorial Watch
+                </button>
+                <button onClick={() => setPage('privacy')}
+                  className="w-full py-3 bg-purple-50 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
+                  🔒 Privacy Policy
+                </button>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <h2 className="text-xl font-bold mb-4">Status</h2>
+              <div className="space-y-3">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <span className="text-green-800">✅ Backend: Live</span>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <span className="text-blue-800">🔄 Wikipedia: Connected</span>
+                </div>
+              </div>
+            </div>
+            <button onClick={doLogout}
+              className="w-full py-4 bg-red-500 text-white rounded-lg text-lg font-bold">
+              Sign Out
+            </button>
+            {!showDeleteConfirm ? (
+              <button onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-3 bg-white border border-red-300 text-red-500 rounded-lg text-base">
+                Delete Account
+              </button>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-4">
+                <h3 className="font-bold text-red-700 text-lg">⚠️ Delete Account</h3>
+                <p className="text-red-600 text-sm">This will permanently delete your account and all watchlist data. This cannot be undone.</p>
+                <button onClick={doDeleteAccount}
+                  className="w-full py-3 bg-red-600 text-white rounded-lg font-bold">
+                  Yes, Permanently Delete My Account
+                </button>
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  className="w-full py-3 bg-white border border-gray-300 text-gray-600 rounded-lg font-medium">
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {page === 'about' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <BackButton onClick={() => setPage('settings')} />
+              <h2 className="text-2xl font-bold mb-2">About Memorial Watch</h2>
+              <p className="text-purple-600 italic text-base leading-relaxed mb-6">
+                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+              </p>
+              <div className="space-y-4 text-gray-700 text-base leading-relaxed">
+                <p>Memorial Watch was produced by three brains. Mine, ChatGPT and Claude. I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
+                <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now (other than stock trading platforms) is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memorial Watch.</p>
+                <p>We have partnered with FamilySearch, a genealogy website maintained by the Church of Jesus Christ of Latter-day Saints that stores obituary information dating back to 1936. With Memorial Watch you can enter a name and Memorial Watch will either inform you whether that person is still alive or not. If available, Memorial Watch will also provide a short bio if the person is famous, or the obituary itself.</p>
+                <p>Memorial Watch is also partnered with Wikipedia which provides biography information on famous or notable people that we display for Watchlist and Search results. A portion of proceeds will be donated to Wikipedia to help assure their continued great service.</p>
+                <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memorial Watch, please contact us with your suggestions.</p>
+              </div>
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <p className="font-bold text-gray-800">Bill Spencer</p>
+                <p className="text-purple-500 italic">Idea Hamster 🐹</p>
+                <a href="mailto:contact@memorialwatch.com"
+                  className="text-purple-500 text-sm mt-2 block">
+                  contact@memorialwatch.com
+                </a>
+              </div>
+              <BackButton onClick={() => setPage('settings')} />
+            </div>
+          </div>
+        )}
+
+        {page === 'privacy' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <BackButton onClick={() => setPage('settings')} />
+              <h2 className="text-2xl font-bold mb-6">Privacy Policy</h2>
+              <p className="text-gray-500 text-sm mb-6">Last updated: March 15, 2026</p>
+              <div className="space-y-6 text-gray-700 text-base leading-relaxed">
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3>
+                  <p>We collect only what is necessary to provide our service: your email address for account creation and login, the names you add to your watchlist, search queries you enter, and basic anonymous usage data to improve the app.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">2. How We Use Your Information</h3>
+                  <p>We use your information to authenticate your account, maintain your personal watchlist, deliver notifications when watchlist matches are found, and improve app features based on anonymous usage patterns. We do not sell your personal information to third parties. Ever.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">3. Data Sources</h3>
+                  <p>Search results are powered by FamilySearch (familysearch.org) for genealogical death records, and Wikipedia (wikipedia.org) for biographical information. These are free, publicly available services. We do not permanently store their content.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">4. Data Storage</h3>
+                  <p>Your data is stored securely on Render.com servers located in the United States. We use industry-standard encryption for all data transmission.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">5. Your Rights</h3>
+                  <p>You have the right to access, correct, or delete your personal data at any time. You may delete your account and all associated data from the Settings page. This action is permanent and cannot be undone.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">6. Children's Privacy</h3>
+                  <p>This service is not directed at children under 13. We do not knowingly collect data from children.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">7. Third Party Services</h3>
+                  <p>We use Render.com for hosting, Vercel for frontend delivery, FamilySearch API for death records, and Wikipedia API for biographical data.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">8. Contact</h3>
+                  <p>For privacy concerns please contact us at:</p>
+                  <a href="mailto:contact@memorialwatch.com"
+                    className="text-purple-500">contact@memorialwatch.com</a>
+                </div>
+              </div>
+              <BackButton onClick={() => setPage('settings')} />
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t px-4 py-3">
+        <div className="flex justify-around max-w-md mx-auto">
+          <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'home' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <HomeIcon />
+            <span className="text-xs">Home</span>
+          </button>
+          <button onClick={() => setPage('watchlist')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'watchlist' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <HeartIcon />
+            <span className="text-xs">Watchlist</span>
+          </button>
+          <button onClick={() => setPage('search')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'search' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <SearchIcon />
+            <span className="text-xs">Search</span>
+          </button>
+          <button onClick={() => setPage('settings')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'settings' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <SettingsIcon />
+            <span className="text-xs">Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById('root'));
+</script>
+</body>
+</html>
