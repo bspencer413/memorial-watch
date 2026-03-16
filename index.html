@@ -551,7 +551,7 @@ function App() {
             <div className="bg-white/90 rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Search</h2>
               <div className="space-y-4">
-                <input type="text" placeholder="Name *" value={sName}
+                <input type="text" placeholder="Name" value={sName}
                   onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); }}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
                   className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
