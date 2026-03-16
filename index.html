@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#9333ea">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Dead or Alive</title>
   <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRGVhZCBvciBBbGl2ZSIsInNob3J0X25hbWUiOiJEZWFkL0FsaXZlIiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMxZTFiNGIiLCJ0aGVtZV9jb2xvciI6IiM5MzMzZWEifQ==">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; overflow-x: hidden; }
+  </style>
 </head>
-<body style="margin:0;padding:0;min-height:100vh;min-width:100vw;">
+<body style="margin:0;padding:0;">
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect } = React;
@@ -20,7 +25,11 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '0.9.4';
+const APP_VERSION = '0.9.5';
+
+const toTitleCase = (str) => {
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+};
 
 const HomeIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,7 +95,7 @@ const BackButton = ({ onClick }) => (
 
 const PageWrapper = ({ children }) => (
   <div style={{
-    minHeight: '100vh',
+    minHeight: '100dvh',
     width: '100%',
     position: 'relative',
     paddingBottom: '5rem',
@@ -134,7 +143,7 @@ function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [sName, setSName] = useState('');
   const [sLoc, setSLoc] = useState('');
-  const [nw, setNw] = useState({ name: '', location: '', dob: '' });
+  const [nw, setNw] = useState({ name: '', location: '', birthYear: '' });
   const [showDangerZone, setShowDangerZone] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -226,8 +235,9 @@ function App() {
 
   const fetchWikiProfile = async (name) => {
     try {
+      const titleCaseName = toTitleCase(name);
       const wikiRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(titleCaseName)}`
       );
       const wikiData = await wikiRes.json();
       if (!wikiData.extract) return null;
@@ -254,8 +264,13 @@ function App() {
   };
 
   const addWatch = async (nameOverride) => {
-    const name = nameOverride || nw.name;
+    const name = toTitleCase(nameOverride || nw.name);
     if (!name.trim()) return;
+    const nameParts = name.trim().split(' ').filter(p => p.length > 0);
+    if (nameParts.length < 2) {
+      alert('Please enter a first and last name for better results.');
+      return;
+    }
     if (isOnWatchlist(name)) {
       alert(`${name} is already on your watchlist!`);
       return;
@@ -267,7 +282,7 @@ function App() {
       if (profile) {
         setWatchlistWiki(profile);
         if (profile.deathDate) {
-          setNw({ name: '', location: '', dob: '' });
+          setNw({ name: '', location: '', birthYear: '' });
           setLoading(false);
           return;
         }
@@ -279,11 +294,14 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
+        body: JSON.stringify(nameOverride
+          ? { name, location: '', dob: '' }
+          : { name, location: nw.location, dob: nw.birthYear }
+        )
       });
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
-      if (!nameOverride) setNw({ name: '', location: '', dob: '' });
+      if (!nameOverride) setNw({ name: '', location: '', birthYear: '' });
       clearSearch();
       setWatchlistWiki(null);
     } catch (error) {
@@ -309,6 +327,11 @@ function App() {
 
   const doSearch = async () => {
     if (!sName.trim()) return;
+    const nameParts = sName.trim().split(' ').filter(p => p.length > 0);
+    if (nameParts.length < 2) {
+      alert('Please enter a first and last name for better results.');
+      return;
+    }
     setLoading(true);
     setWikiProfile(null);
     setResults([]);
@@ -320,7 +343,7 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name: sName, location: sLoc || undefined })
+        body: JSON.stringify({ name: toTitleCase(sName), location: sLoc || undefined })
       });
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
@@ -417,7 +440,7 @@ function App() {
   if (!auth) {
     return (
       <div style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         width: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -475,15 +498,15 @@ function App() {
               <p className="text-white/80 text-sm">Monitoring {watchlist.length} people</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setPage('watchlist')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm">
-                <HeartIcon />
-                <h3 className="font-semibold text-gray-800 mt-3">Watchlist</h3>
-                <p className="text-sm text-gray-600">{watchlist.length} people</p>
-              </button>
-              <button onClick={() => setPage('search')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm">
+              <button onClick={() => setPage('search')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
                 <SearchIcon />
-                <h3 className="font-semibold text-gray-800 mt-3">Search</h3>
-                <p className="text-sm text-gray-600">Wikipedia + Records</p>
+                <h3 className="font-bold text-gray-800 mt-3 text-lg">Search</h3>
+                <p className="text-sm text-gray-600 mt-1">Look up anyone by name to find out if they are still with us</p>
+              </button>
+              <button onClick={() => setPage('watchlist')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
+                <HeartIcon />
+                <h3 className="font-bold text-gray-800 mt-3 text-lg">Watchlist</h3>
+                <p className="text-sm text-gray-600 mt-1">Save names to monitor — get notified if their status changes</p>
               </button>
             </div>
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
@@ -502,9 +525,10 @@ function App() {
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Full Name"
+                  placeholder="Full Name (First and Last)"
                   value={nw.name}
                   onChange={(e) => { setNw({...nw, name: e.target.value}); setWatchlistWiki(null); }}
+                  onBlur={(e) => setNw({...nw, name: toTitleCase(e.target.value)})}
                   onKeyPress={(e) => e.key === 'Enter' && addWatch()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
                 />
@@ -518,10 +542,11 @@ function App() {
                 />
                 <input
                   type="text"
-                  placeholder="Date of Birth (optional, e.g. 1945-06-15)"
-                  value={nw.dob}
-                  onChange={(e) => setNw({...nw, dob: e.target.value})}
+                  placeholder="Birth Year (optional, e.g. 1952)"
+                  value={nw.birthYear}
+                  onChange={(e) => setNw({...nw, birthYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
                   onKeyPress={(e) => e.key === 'Enter' && addWatch()}
+                  maxLength={4}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
                 />
                 <button
@@ -546,7 +571,7 @@ function App() {
                         <h3 className="font-semibold text-lg">{w.name}</h3>
                         <div className="text-sm text-gray-600">
                           {w.location && <span>{w.location}</span>}
-                          {w.dob && <span> • DOB: {w.dob}</span>}
+                          {w.dob && <span> • Born: {w.dob}</span>}
                         </div>
                         <div className="flex items-center gap-1 mt-2">
                           <CheckIcon />
@@ -567,11 +592,12 @@ function App() {
         {page === 'search' && (
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-              <h2 className="text-xl font-bold mb-4">Search</h2>
+              <h2 className="text-xl font-bold mb-1">Search</h2>
+              <p className="text-gray-500 text-sm mb-4">Enter a first and last name to search</p>
               <div className="space-y-4">
                 <input
                   type="text"
-                  placeholder="Name"
+                  placeholder="Full Name (First and Last)"
                   value={sName}
                   onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); }}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
@@ -784,19 +810,20 @@ function App() {
         backdropFilter: 'blur(8px)',
         borderTop: '1px solid #e5e7eb',
         padding: '0.75rem 1rem',
+        paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
       }}>
         <div className="flex justify-around max-w-2xl mx-auto">
           <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'home' ? 'text-purple-500' : 'text-gray-400'}`}>
             <HomeIcon />
             <span className="text-xs">Home</span>
           </button>
-          <button onClick={() => setPage('watchlist')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'watchlist' ? 'text-purple-500' : 'text-gray-400'}`}>
-            <HeartIcon />
-            <span className="text-xs">Watchlist</span>
-          </button>
           <button onClick={() => setPage('search')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'search' ? 'text-purple-500' : 'text-gray-400'}`}>
             <SearchIcon />
             <span className="text-xs">Search</span>
+          </button>
+          <button onClick={() => setPage('watchlist')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'watchlist' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <HeartIcon />
+            <span className="text-xs">Watchlist</span>
           </button>
           <button onClick={() => setPage('settings')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'settings' ? 'text-purple-500' : 'text-gray-400'}`}>
             <SettingsIcon />
