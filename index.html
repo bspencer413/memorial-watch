@@ -78,7 +78,7 @@ const EyeOffIcon = () => (
 function isDeceasedCheck(extract, description, deathDate) {
   const hasDeathInBrackets = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(extract);
   const hasYearsInDescription = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(description);
-  const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
+  const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\(born/.test(extract.split('.')[0]);
   const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
   const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
   const hasDeathDate = !!deathDate;
@@ -307,8 +307,7 @@ function App() {
           </div>
         )}
         {!profile.deathDate && showAddButton && (
-          <button
-            onClick={() => addWatch(profile.title)}
+          <button onClick={() => addWatch(profile.title)}
             className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
             <PlusIcon /> Add to Watchlist
           </button>
