@@ -103,6 +103,7 @@ function App() {
   const [sName, setSName] = useState('');
   const [sLoc, setSLoc] = useState('');
   const [nw, setNw] = useState({ name: '', location: '', dob: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     const t = localStorage.getItem('token');
@@ -168,6 +169,21 @@ function App() {
     setWatchlistWiki(null);
   };
 
+  const doDeleteAccount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/account`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed');
+      doLogout();
+      alert('Your account has been permanently deleted.');
+    } catch (error) {
+      alert('Error deleting account: ' + error.message);
+    }
+  };
+
   const fetchWikiProfile = async (name) => {
     const wikiRes = await fetch(
       `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
@@ -192,7 +208,6 @@ function App() {
   const addWatch = async (nameOverride) => {
     const name = nameOverride || nw.name;
     if (!name.trim()) return;
-
     const alreadyExists = watchlist.some(
       w => w.name.toLowerCase() === name.toLowerCase()
     );
@@ -200,7 +215,6 @@ function App() {
       alert(`${name} is already on your watchlist!`);
       return;
     }
-
     setLoading(true);
     setWatchlistWiki(null);
     try {
@@ -386,9 +400,6 @@ function App() {
               <p className="text-sm text-white/80 mb-3">Memorial Watch</p>
               <p className="text-white/90">Welcome, {user?.name}! 👋</p>
               <p className="text-white/80 text-sm">Monitoring {watchlist.length} people</p>
-              <div className="mt-4 p-3 bg-white/20 rounded-lg">
-                <p className="text-sm">🚀 Real Backend Connected!</p>
-              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setPage('watchlist')} className="bg-white rounded-xl p-6 shadow-lg">
@@ -401,6 +412,11 @@ function App() {
                 <h3 className="font-semibold text-gray-800 mt-3">Search</h3>
                 <p className="text-sm text-gray-500">Wikipedia + Records</p>
               </button>
+            </div>
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <p className="text-gray-600 text-base italic leading-relaxed text-center">
+                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+              </p>
             </div>
           </div>
         )}
@@ -505,8 +521,18 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Account</h2>
-              <div className="p-3 bg-gray-50 rounded-lg">
+              <div className="p-3 bg-gray-50 rounded-lg mb-4">
                 <p className="font-medium">{user?.email}</p>
+              </div>
+              <div className="space-y-3">
+                <button onClick={() => setPage('about')}
+                  className="w-full py-3 bg-purple-50 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
+                  ℹ️ About Memorial Watch
+                </button>
+                <button onClick={() => setPage('privacy')}
+                  className="w-full py-3 bg-purple-50 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
+                  🔒 Privacy Policy
+                </button>
               </div>
             </div>
             <div className="bg-white rounded-2xl p-6 shadow-lg">
@@ -520,9 +546,108 @@ function App() {
                 </div>
               </div>
             </div>
-            <button onClick={doLogout} className="w-full py-4 bg-red-500 text-white rounded-lg text-lg font-bold">
+            <button onClick={doLogout}
+              className="w-full py-4 bg-red-500 text-white rounded-lg text-lg font-bold">
               Sign Out
             </button>
+            {!showDeleteConfirm ? (
+              <button onClick={() => setShowDeleteConfirm(true)}
+                className="w-full py-3 bg-white border border-red-300 text-red-500 rounded-lg text-base">
+                Delete Account
+              </button>
+            ) : (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-6 space-y-4">
+                <h3 className="font-bold text-red-700 text-lg">⚠️ Delete Account</h3>
+                <p className="text-red-600 text-sm">This will permanently delete your account and all watchlist data. This cannot be undone.</p>
+                <button onClick={doDeleteAccount}
+                  className="w-full py-3 bg-red-600 text-white rounded-lg font-bold">
+                  Yes, Permanently Delete My Account
+                </button>
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  className="w-full py-3 bg-white border border-gray-300 text-gray-600 rounded-lg font-medium">
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {page === 'about' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <button onClick={() => setPage('settings')}
+                className="text-purple-500 mb-4 flex items-center gap-1 text-sm">
+                ← Back to Settings
+              </button>
+              <h2 className="text-2xl font-bold mb-2">About Memorial Watch</h2>
+              <p className="text-purple-600 italic text-base leading-relaxed mb-6">
+                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+              </p>
+              <div className="space-y-4 text-gray-700 text-base leading-relaxed">
+                <p>Memorial Watch was produced by three brains. Mine, ChatGPT and Claude. I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
+                <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now (other than stock trading platforms) is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memorial Watch.</p>
+                <p>We have partnered with FamilySearch, a genealogy website maintained by the Church of Jesus Christ of Latter-day Saints that stores obituary information dating back to 1936. With Memorial Watch you can enter a name and Memorial Watch will either inform you whether that person is still alive or not. If available, Memorial Watch will also provide a short bio if the person is famous, or the obituary itself.</p>
+                <p>Memorial Watch is also partnered with Wikipedia which provides biography information on famous or notable people that we display for Watchlist and Search results. A portion of proceeds will be donated to Wikipedia to help assure their continued great service.</p>
+                <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memorial Watch, please contact us with your suggestions.</p>
+              </div>
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <p className="font-bold text-gray-800">Bill Spencer</p>
+                <p className="text-purple-500 italic">Idea Hamster 🐹</p>
+                <a href="mailto:contact@memorialwatch.com"
+                  className="text-purple-500 text-sm mt-2 block">
+                  contact@memorialwatch.com
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {page === 'privacy' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
+              <button onClick={() => setPage('settings')}
+                className="text-purple-500 mb-4 flex items-center gap-1 text-sm">
+                ← Back to Settings
+              </button>
+              <h2 className="text-2xl font-bold mb-6">Privacy Policy</h2>
+              <p className="text-gray-500 text-sm mb-6">Last updated: March 15, 2026</p>
+              <div className="space-y-6 text-gray-700 text-base leading-relaxed">
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3>
+                  <p>We collect only what is necessary to provide our service: your email address for account creation and login, the names you add to your watchlist, search queries you enter, and basic anonymous usage data to improve the app.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">2. How We Use Your Information</h3>
+                  <p>We use your information to authenticate your account, maintain your personal watchlist, deliver notifications when watchlist matches are found, and improve app features based on anonymous usage patterns. We do not sell your personal information to third parties. Ever.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">3. Data Sources</h3>
+                  <p>Search results are powered by FamilySearch (familysearch.org) for genealogical death records, and Wikipedia (wikipedia.org) for biographical information. These are free, publicly available services. We do not permanently store their content.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">4. Data Storage</h3>
+                  <p>Your data is stored securely on Render.com servers located in the United States. We use industry-standard encryption for all data transmission.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">5. Your Rights</h3>
+                  <p>You have the right to access, correct, or delete your personal data at any time. You may delete your account and all associated data from the Settings page. This action is permanent and cannot be undone.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">6. Children's Privacy</h3>
+                  <p>This service is not directed at children under 13. We do not knowingly collect data from children.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">7. Third Party Services</h3>
+                  <p>We use Render.com for hosting, Vercel for frontend delivery, FamilySearch API for death records, and Wikipedia API for biographical data.</p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 mb-2">8. Contact</h3>
+                  <p>For privacy concerns please contact us at:</p>
+                  <a href="mailto:contact@memorialwatch.com"
+                    className="text-purple-500">contact@memorialwatch.com</a>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
