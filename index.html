@@ -155,29 +155,57 @@ function App() {
   };
 
   const addWatch = async (nameOverride) => {
-    const name = nameOverride || nw.name;
-    if (!name.trim()) return;
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE}/watchlist`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
+  const name = nameOverride || nw.name;
+  if (!name.trim()) return;
+  setLoading(true);
+  setWikiProfile(null);
+  try {
+    const wikiRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
+    );
+    const wikiData = await wikiRes.json();
+    if (wikiData.extract) {
+    const extract = wikiData.extract || '';
+    const description = wikiData.description || '';
+    const hasDeathInBrackets = /\(\d{4}.{0,20}\d{4}\)/.test(extract);
+    const hasYearsInDescription = /\(\d{4}.*?\d{4}\)/.test(description);
+    const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
+    const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
+    const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
+    const hasDeathDate = !!wikiData.death_date;
+    const isDeceased = hasDeathDate || hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
+      setWikiProfile({
+        title: wikiData.title,
+        extract: extract,
+        thumbnail: wikiData.thumbnail?.source,
+        birthDate: wikiData.birth_date || null,
+        deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
+        description: description,
       });
-      if (!response.ok) throw new Error('Failed');
-      await loadWatchlist();
-      if (!nameOverride) setNw({ name: '', location: '', dob: '' });
-      alert('Added to Watchlist!');
-    } catch (error) {
-      alert('Error: ' + error.message);
-    } finally {
-      setLoading(false);
+      if (isDeceased) {
+        setLoading(false);
+        return;
+      }
     }
-  };
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE}/watchlist`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
+    });
+    if (!response.ok) throw new Error('Failed');
+    await loadWatchlist();
+    if (!nameOverride) setNw({ name: '', location: '', dob: '' });
+    alert('✅ Added to Watchlist!');
+  } catch (error) {
+    alert('Error: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const delWatch = async (id) => {
     try {
@@ -339,6 +367,47 @@ function App() {
                 </button>
               </div>
             </div>
+            {wikiProfile && (
+  <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
+    <div className={`px-5 py-3 flex items-center gap-3 ${wikiProfile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
+      <span className="text-white font-black tracking-widest text-sm">
+        {wikiProfile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
+      </span>
+    </div>
+    <div className="bg-indigo-950 p-5">
+      <div className="flex gap-4 items-start mb-4">
+        {wikiProfile.thumbnail ? (
+          <img src={wikiProfile.thumbnail} alt={wikiProfile.title}
+            className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
+        ) : (
+          <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
+        )}
+        <div className="flex-1">
+          <h2 className="text-white text-xl font-bold mb-1">{wikiProfile.title}</h2>
+          <p className="text-purple-300 text-sm italic mb-1">{wikiProfile.description}</p>
+        </div>
+      </div>
+      <p className="text-purple-100 text-base leading-relaxed mb-4">
+        {wikiProfile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
+      </p>
+      {wikiProfile.deathDate && (
+        <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl">
+          <p className="text-gray-200 text-sm text-center">
+            ⚫ This person has passed away — no need to add to watchlist
+          </p>
+        </div>
+      )}
+      {!wikiProfile.deathDate && (
+        <div className="p-3 bg-green-500/20 border border-green-400/30 rounded-xl">
+          <p className="text-green-200 text-sm text-center">
+            🟢 Added to your watchlist!
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Your Watchlist ({watchlist.length})</h2>
               {watchlist.length === 0 ? (
