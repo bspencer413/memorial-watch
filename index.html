@@ -191,33 +191,38 @@ function App() {
   };
 
   const fetchWikiProfile = async (name) => {
-    const wikiRes = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
-    );
-    const wikiData = await wikiRes.json();
-    if (!wikiData.extract) return null;
-    const extract = wikiData.extract || '';
-    const description = wikiData.description || '';
-    const type = wikiData.type || '';
-    const deceased = isDeceasedCheck(extract, description, wikiData.death_date, type);
-    return {
-      title: wikiData.title,
-      extract: extract,
-      thumbnail: wikiData.thumbnail?.source,
-      birthDate: wikiData.birth_date || null,
-      deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
-      description: description,
-      isDisambiguation: type === 'disambiguation',
-    };
+    try {
+      const wikiRes = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
+      );
+      const wikiData = await wikiRes.json();
+      if (!wikiData.extract) return null;
+      const extract = wikiData.extract || '';
+      const description = wikiData.description || '';
+      const type = wikiData.type || '';
+      const deceased = isDeceasedCheck(extract, description, wikiData.death_date, type);
+      return {
+        title: wikiData.title,
+        extract: extract,
+        thumbnail: wikiData.thumbnail?.source,
+        birthDate: wikiData.birth_date || null,
+        deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
+        description: description,
+        isDisambiguation: type === 'disambiguation',
+      };
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const isOnWatchlist = (name) => {
+    return watchlist.some(w => w.name.toLowerCase() === name.toLowerCase());
   };
 
   const addWatch = async (nameOverride) => {
     const name = nameOverride || nw.name;
     if (!name.trim()) return;
-    const alreadyExists = watchlist.some(
-      w => w.name.toLowerCase() === name.toLowerCase()
-    );
-    if (alreadyExists) {
+    if (isOnWatchlist(name)) {
       alert(`${name} is already on your watchlist!`);
       return;
     }
@@ -245,11 +250,11 @@ function App() {
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
       if (!nameOverride) setNw({ name: '', location: '', dob: '' });
-      // Clear search after successful add from search page
       setSName('');
       setSLoc('');
       setWikiProfile(null);
       setResults([]);
+      setWatchlistWiki(null);
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -298,64 +303,75 @@ function App() {
     }
   };
 
-  const WikiCard = ({ profile, showAddButton }) => (
-    <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
-      <div className={`px-5 py-3 flex items-center gap-3 ${profile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
-        <span className="text-white font-black tracking-widest text-sm">
-          {profile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
-        </span>
-        {profile.deathDate && profile.deathDate !== 'deceased' && (
-          <span className="text-white/80 text-xs ml-auto">Died: {profile.deathDate}</span>
-        )}
-      </div>
-      <div className="bg-indigo-950 p-5">
-        <div className="flex gap-4 items-start mb-4">
-          {profile.thumbnail ? (
-            <img src={profile.thumbnail} alt={profile.title}
-              className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
+  const WikiCard = ({ profile, showAddButton }) => {
+    const alreadyWatching = isOnWatchlist(profile.title);
+    return (
+      <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
+        <div className={`px-5 py-3 flex items-center gap-3 ${profile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
+          <span className="text-white font-black tracking-widest text-sm">
+            {profile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
+          </span>
+          {profile.deathDate && profile.deathDate !== 'deceased' && (
+            <span className="text-white/80 text-xs ml-auto">Died: {profile.deathDate}</span>
           )}
-          <div className="flex-1">
-            <h2 className="text-white text-xl font-bold mb-1">{profile.title}</h2>
-            <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>
-            {profile.birthDate && (
-              <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>
-            )}
-          </div>
         </div>
-        {profile.isDisambiguation ? (
-          <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3">
-            <p className="text-yellow-200 text-sm text-center">
-              ⚠️ Multiple people match this name — try adding a first name or middle name for better results
+        <div className="bg-indigo-950 p-5">
+          <div className="flex gap-4 items-start mb-4">
+            {profile.thumbnail ? (
+              <img src={profile.thumbnail} alt={profile.title}
+                className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
+            )}
+            <div className="flex-1">
+              <h2 className="text-white text-xl font-bold mb-1">{profile.title}</h2>
+              <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>
+              {profile.birthDate && (
+                <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>
+              )}
+            </div>
+          </div>
+          {profile.isDisambiguation ? (
+            <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3">
+              <p className="text-yellow-200 text-sm text-center">
+                ⚠️ Multiple people match this name — try adding a first name or middle name for better results
+              </p>
+            </div>
+          ) : (
+            <p className="text-purple-100 text-base leading-relaxed mb-4">
+              {profile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
+            </p>
+          )}
+          {profile.deathDate && (
+            <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl mb-3">
+              <p className="text-gray-200 text-sm text-center">
+                ⚫ This person has passed away — no need to add to watchlist
+              </p>
+            </div>
+          )}
+          {!profile.deathDate && showAddButton && (
+            alreadyWatching ? (
+              <div className="p-3 bg-green-500/20 border border-green-400/30 rounded-xl mb-3">
+                <p className="text-green-200 text-sm text-center">
+                  ✅ Already on your watchlist
+                </p>
+              </div>
+            ) : (
+              <button onClick={() => addWatch(profile.title)}
+                className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
+                <PlusIcon /> Add to Watchlist
+              </button>
+            )
+          )}
+          <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
+            <p className="text-purple-200 text-xs leading-relaxed">
+              💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
             </p>
           </div>
-        ) : (
-          <p className="text-purple-100 text-base leading-relaxed mb-4">
-            {profile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
-          </p>
-        )}
-        {profile.deathDate && (
-          <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl mb-3">
-            <p className="text-gray-200 text-sm text-center">
-              ⚫ This person has passed away — no need to add to watchlist
-            </p>
-          </div>
-        )}
-        {!profile.deathDate && showAddButton && (
-          <button onClick={() => addWatch(profile.title)}
-            className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
-            <PlusIcon /> Add to Watchlist
-          </button>
-        )}
-        <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
-          <p className="text-purple-200 text-xs leading-relaxed">
-            💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
-          </p>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   if (!auth) {
     return (
