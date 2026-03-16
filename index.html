@@ -75,6 +75,16 @@ const EyeOffIcon = () => (
   </svg>
 );
 
+function isDeceasedCheck(extract, description, deathDate) {
+  const hasDeathInBrackets = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(extract);
+  const hasYearsInDescription = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(description);
+  const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
+  const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
+  const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
+  const hasDeathDate = !!deathDate;
+  return hasDeathDate || hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
+}
+
 function App() {
   const [page, setPage] = useState('home');
   const [auth, setAuth] = useState(false);
@@ -82,6 +92,7 @@ function App() {
   const [watchlist, setWatchlist] = useState([]);
   const [results, setResults] = useState([]);
   const [wikiProfile, setWikiProfile] = useState(null);
+  const [watchlistWiki, setWatchlistWiki] = useState(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -152,63 +163,56 @@ function App() {
     setWatchlist([]);
     setResults([]);
     setWikiProfile(null);
+    setWatchlistWiki(null);
   };
 
   const addWatch = async (nameOverride) => {
-  const name = nameOverride || nw.name;
-  if (!name.trim()) return;
-  setLoading(true);
-  setWikiProfile(null);
-  try {
-    const wikiRes = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
-    );
-    const wikiData = await wikiRes.json();
-    if (wikiData.extract) {
-    const extract = wikiData.extract || '';
-    const description = wikiData.description || '';
-    const hasDeathInBrackets = /\(\d{4}.{0,20}\d{4}\)/.test(extract);
-    const hasYearsInDescription = /\(\d{4}.*?\d{4}\)/.test(description);
-    const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
-    const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
-    const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
-    const hasDeathDate = !!wikiData.death_date;
-    const isDeceased = hasDeathDate || hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
-      setWikiProfile({
-        title: wikiData.title,
-        extract: extract,
-        thumbnail: wikiData.thumbnail?.source,
-        birthDate: wikiData.birth_date || null,
-        deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
-        description: description,
-      });
-      if (isDeceased) {
-  setNw({ name: '', location: '', dob: '' });
-  setLoading(false);
-  return;
-}
-
+    const name = nameOverride || nw.name;
+    if (!name.trim()) return;
+    setLoading(true);
+    setWatchlistWiki(null);
+    try {
+      const wikiRes = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
+      );
+      const wikiData = await wikiRes.json();
+      if (wikiData.extract) {
+        const extract = wikiData.extract || '';
+        const description = wikiData.description || '';
+        const deceased = isDeceasedCheck(extract, description, wikiData.death_date);
+        const profile = {
+          title: wikiData.title,
+          extract: extract,
+          thumbnail: wikiData.thumbnail?.source,
+          birthDate: wikiData.birth_date || null,
+          deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
+          description: description,
+        };
+        setWatchlistWiki(profile);
+        if (deceased) {
+          setNw({ name: '', location: '', dob: '' });
+          setLoading(false);
+          return;
+        }
       }
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/watchlist`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
+      });
+      if (!response.ok) throw new Error('Failed');
+      await loadWatchlist();
+      if (!nameOverride) setNw({ name: '', location: '', dob: '' });
+    } catch (error) {
+      alert('Error: ' + error.message);
+    } finally {
+      setLoading(false);
     }
-    const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE}/watchlist`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(nameOverride ? { name: nameOverride, location: '', dob: '' } : nw)
-    });
-    if (!response.ok) throw new Error('Failed');
-    await loadWatchlist();
-    if (!nameOverride) setNw({ name: '', location: '', dob: '' });
-    alert('✅ Added to Watchlist!');
-  } catch (error) {
-    alert('Error: ' + error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const delWatch = async (id) => {
     try {
@@ -249,20 +253,13 @@ function App() {
       if (wikiData.extract) {
         const extract = wikiData.extract || '';
         const description = wikiData.description || '';
-        const hasDeathInBrackets = /\(\d{4}.{0,20}\d{4}\)/.test(extract);
-        const hasYearsInDescription = /\(\d{4}.*?\d{4}\)/.test(description);
-        const isPastTense = /\bwas (an?|the)\b/.test(extract.split('.')[0]);
-        const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
-        const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
-        const hasDeathDate = !!wikiData.death_date;
-        const isDeceased = hasDeathDate || hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
-
+        const deceased = isDeceasedCheck(extract, description, wikiData.death_date);
         setWikiProfile({
           title: wikiData.title,
           extract: extract,
           thumbnail: wikiData.thumbnail?.source,
           birthDate: wikiData.birth_date || null,
-          deathDate: isDeceased ? (wikiData.death_date || 'deceased') : null,
+          deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
           description: description,
         });
       }
@@ -272,6 +269,58 @@ function App() {
       setLoading(false);
     }
   };
+
+  const WikiCard = ({ profile, showAddButton }) => (
+    <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
+      <div className={`px-5 py-3 flex items-center gap-3 ${profile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
+        <span className="text-white font-black tracking-widest text-sm">
+          {profile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
+        </span>
+        {profile.deathDate && profile.deathDate !== 'deceased' && (
+          <span className="text-white/80 text-xs ml-auto">Died: {profile.deathDate}</span>
+        )}
+      </div>
+      <div className="bg-indigo-950 p-5">
+        <div className="flex gap-4 items-start mb-4">
+          {profile.thumbnail ? (
+            <img src={profile.thumbnail} alt={profile.title}
+              className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
+          )}
+          <div className="flex-1">
+            <h2 className="text-white text-xl font-bold mb-1">{profile.title}</h2>
+            <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>
+            {profile.birthDate && (
+              <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>
+            )}
+          </div>
+        </div>
+        <p className="text-purple-100 text-base leading-relaxed mb-4">
+          {profile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
+        </p>
+        {profile.deathDate && (
+          <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl mb-3">
+            <p className="text-gray-200 text-sm text-center">
+              ⚫ This person has passed away — no need to add to watchlist
+            </p>
+          </div>
+        )}
+        {!profile.deathDate && showAddButton && (
+          <button
+            onClick={() => addWatch(profile.title)}
+            className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
+            <PlusIcon /> Add to Watchlist
+          </button>
+        )}
+        <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
+          <p className="text-purple-200 text-xs leading-relaxed">
+            💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 
   if (!auth) {
     return (
@@ -293,32 +342,21 @@ function App() {
               Register
             </button>
           </div>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
+          <input type="email" placeholder="Email" value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-            className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl"
-          />
+            className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
           <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Password"
-              value={password}
+            <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
               onChange={(e) => setPassword(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-              className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl"
-            />
-            <button
-              onClick={() => setShowPassword(!showPassword)}
+              className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
+            <button onClick={() => setShowPassword(!showPassword)}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60">
               {showPassword ? <EyeOffIcon /> : <EyeIcon />}
             </button>
           </div>
-          <button
-            onClick={doAuth}
-            disabled={loading}
+          <button onClick={doAuth} disabled={loading}
             className="w-full py-4 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl disabled:opacity-50 text-xl tracking-wide">
             {loading ? 'Loading...' : mode === 'login' ? 'Login' : 'Create Account'}
           </button>
@@ -362,55 +400,22 @@ function App() {
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Add to Watchlist</h2>
               <div className="space-y-4">
-                <input type="text" placeholder="Full Name *" value={nw.name} onChange={(e) => setNw({...nw, name: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
-                <input type="text" placeholder="Location" value={nw.location} onChange={(e) => setNw({...nw, location: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
-                <input type="date" value={nw.dob} onChange={(e) => setNw({...nw, dob: e.target.value})} className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
-                <button onClick={() => addWatch()} disabled={loading} className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
-                  <PlusIcon /> {loading ? 'Adding...' : 'Add to Watchlist'}
+                <input type="text" placeholder="Full Name *" value={nw.name}
+                  onChange={(e) => { setNw({...nw, name: e.target.value}); setWatchlistWiki(null); }}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <input type="text" placeholder="Location" value={nw.location}
+                  onChange={(e) => setNw({...nw, location: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <input type="date" value={nw.dob}
+                  onChange={(e) => setNw({...nw, dob: e.target.value})}
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 text-lg" />
+                <button onClick={() => addWatch()} disabled={loading}
+                  className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
+                  <PlusIcon /> {loading ? 'Checking...' : 'Add to Watchlist'}
                 </button>
               </div>
             </div>
-            {wikiProfile && (
-  <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
-    <div className={`px-5 py-3 flex items-center gap-3 ${wikiProfile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
-      <span className="text-white font-black tracking-widest text-sm">
-        {wikiProfile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
-      </span>
-    </div>
-    <div className="bg-indigo-950 p-5">
-      <div className="flex gap-4 items-start mb-4">
-        {wikiProfile.thumbnail ? (
-          <img src={wikiProfile.thumbnail} alt={wikiProfile.title}
-            className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
-        ) : (
-          <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
-        )}
-        <div className="flex-1">
-          <h2 className="text-white text-xl font-bold mb-1">{wikiProfile.title}</h2>
-          <p className="text-purple-300 text-sm italic mb-1">{wikiProfile.description}</p>
-        </div>
-      </div>
-      <p className="text-purple-100 text-base leading-relaxed mb-4">
-        {wikiProfile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
-      </p>
-      {wikiProfile.deathDate && (
-        <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl">
-          <p className="text-gray-200 text-sm text-center">
-            ⚫ This person has passed away — no need to add to watchlist
-          </p>
-        </div>
-      )}
-      {!wikiProfile.deathDate && (
-        <div className="p-3 bg-green-500/20 border border-green-400/30 rounded-xl">
-          <p className="text-green-200 text-sm text-center">
-            🟢 Added to your watchlist!
-          </p>
-        </div>
-      )}
-    </div>
-  </div>
-)}
-
+            {watchlistWiki && <WikiCard profile={watchlistWiki} showAddButton={false} />}
             <div className="bg-white rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold mb-4">Your Watchlist ({watchlist.length})</h2>
               {watchlist.length === 0 ? (
@@ -459,52 +464,7 @@ function App() {
                 </button>
               </div>
             </div>
-
-            {wikiProfile && !loading && (
-              <div className="rounded-2xl overflow-hidden border border-purple-300 shadow-lg">
-                <div className={`px-5 py-3 flex items-center gap-3 ${wikiProfile.deathDate ? 'bg-gray-600' : 'bg-green-600'}`}>
-                  <span className="text-white font-black tracking-widest text-sm">
-                    {wikiProfile.deathDate ? '⚫ DECEASED' : '🟢 ALIVE'}
-                  </span>
-                  {wikiProfile.deathDate && wikiProfile.deathDate !== 'deceased' && (
-                    <span className="text-white/80 text-xs ml-auto">Died: {wikiProfile.deathDate}</span>
-                  )}
-                </div>
-                <div className="bg-indigo-950 p-5">
-                  <div className="flex gap-4 items-start mb-4">
-                    {wikiProfile.thumbnail ? (
-                      <img src={wikiProfile.thumbnail} alt={wikiProfile.title}
-                        className="w-20 h-20 rounded-full object-cover border-2 border-purple-400/50 shrink-0" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
-                    )}
-                    <div className="flex-1">
-                      <h2 className="text-white text-xl font-bold mb-1">{wikiProfile.title}</h2>
-                      <p className="text-purple-300 text-sm italic mb-1">{wikiProfile.description}</p>
-                      {wikiProfile.birthDate && (
-                        <p className="text-purple-400 text-xs">🎂 Born: {wikiProfile.birthDate}</p>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-purple-100 text-base leading-relaxed mb-4">
-                    {wikiProfile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
-                  </p>
-                  {!wikiProfile.deathDate && (
-                    <button
-                      onClick={() => addWatch(wikiProfile.title)}
-                      className="w-full py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-bold text-base flex items-center justify-center gap-2 mb-3">
-                      <PlusIcon /> Add to Watchlist
-                    </button>
-                  )}
-                  <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
-                    <p className="text-purple-200 text-xs leading-relaxed">
-                      💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
+            {wikiProfile && !loading && <WikiCard profile={wikiProfile} showAddButton={true} />}
             {results.length > 0 && (
               <div className="bg-white rounded-2xl p-6 shadow-lg">
                 <h2 className="text-xl font-bold mb-4">Death Records ({results.length})</h2>
