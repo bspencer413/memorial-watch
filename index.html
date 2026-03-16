@@ -75,10 +75,12 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-function isDeceasedCheck(extract, description, deathDate) {
-  const hasDeathInBrackets = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(extract);
+function isDeceasedCheck(extract, description, deathDate, type) {
+  if (type === 'disambiguation') return false;
+  const firstSentence = extract.split('.')[0];
+  const hasDeathInBrackets = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(firstSentence);
   const hasYearsInDescription = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(description);
-  const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\(born/.test(extract.split('.')[0]);
+  const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\(born/.test(firstSentence);
   const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
   const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
   const hasDeathDate = !!deathDate;
@@ -166,30 +168,46 @@ function App() {
     setWatchlistWiki(null);
   };
 
+  const fetchWikiProfile = async (name) => {
+    const wikiRes = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
+    );
+    const wikiData = await wikiRes.json();
+    if (!wikiData.extract) return null;
+    const extract = wikiData.extract || '';
+    const description = wikiData.description || '';
+    const type = wikiData.type || '';
+    const deceased = isDeceasedCheck(extract, description, wikiData.death_date, type);
+    return {
+      title: wikiData.title,
+      extract: extract,
+      thumbnail: wikiData.thumbnail?.source,
+      birthDate: wikiData.birth_date || null,
+      deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
+      description: description,
+      isDisambiguation: type === 'disambiguation',
+    };
+  };
+
   const addWatch = async (nameOverride) => {
     const name = nameOverride || nw.name;
     if (!name.trim()) return;
+
+    const alreadyExists = watchlist.some(
+      w => w.name.toLowerCase() === name.toLowerCase()
+    );
+    if (alreadyExists) {
+      alert(`${name} is already on your watchlist!`);
+      return;
+    }
+
     setLoading(true);
     setWatchlistWiki(null);
     try {
-      const wikiRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(name)}`
-      );
-      const wikiData = await wikiRes.json();
-      if (wikiData.extract) {
-        const extract = wikiData.extract || '';
-        const description = wikiData.description || '';
-        const deceased = isDeceasedCheck(extract, description, wikiData.death_date);
-        const profile = {
-          title: wikiData.title,
-          extract: extract,
-          thumbnail: wikiData.thumbnail?.source,
-          birthDate: wikiData.birth_date || null,
-          deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
-          description: description,
-        };
+      const profile = await fetchWikiProfile(name);
+      if (profile) {
         setWatchlistWiki(profile);
-        if (deceased) {
+        if (profile.deathDate) {
           setNw({ name: '', location: '', dob: '' });
           setLoading(false);
           return;
@@ -246,23 +264,8 @@ function App() {
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
       setResults(data);
-      const wikiRes = await fetch(
-        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(sName)}`
-      );
-      const wikiData = await wikiRes.json();
-      if (wikiData.extract) {
-        const extract = wikiData.extract || '';
-        const description = wikiData.description || '';
-        const deceased = isDeceasedCheck(extract, description, wikiData.death_date);
-        setWikiProfile({
-          title: wikiData.title,
-          extract: extract,
-          thumbnail: wikiData.thumbnail?.source,
-          birthDate: wikiData.birth_date || null,
-          deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
-          description: description,
-        });
-      }
+      const profile = await fetchWikiProfile(sName);
+      if (profile) setWikiProfile(profile);
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -296,9 +299,17 @@ function App() {
             )}
           </div>
         </div>
-        <p className="text-purple-100 text-base leading-relaxed mb-4">
-          {profile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
-        </p>
+        {profile.isDisambiguation ? (
+          <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3">
+            <p className="text-yellow-200 text-sm text-center">
+              ⚠️ Multiple people match this name — try adding a first name or middle name for better results
+            </p>
+          </div>
+        ) : (
+          <p className="text-purple-100 text-base leading-relaxed mb-4">
+            {profile.extract?.split('. ').slice(0, 3).join('. ') + '.'}
+          </p>
+        )}
         {profile.deathDate && (
           <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl mb-3">
             <p className="text-gray-200 text-sm text-center">
