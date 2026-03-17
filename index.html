@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#9333ea">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Dead or Alive — Memory Watch</title>
+  <title>Memory Watch</title>
   <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTWVtb3J5IFdhdGNoIiwic2hvcnRfbmFtZSI6Ik1lbW9yeSBXYXRjaCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMWUxYjRiIiwidGhlbWVfY29sb3IiOiIjOTMzM2VhIn0=">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0 Beta';
+const APP_VERSION = '1.0.1';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -266,7 +266,6 @@ function App() {
       const extract = wikiData.extract || '';
       const description = wikiData.description || '';
       const type = wikiData.type || '';
-      // Handle disambiguation — try to find actual person
       if (type === 'disambiguation') {
         return {
           title: wikiData.title.replace(' (disambiguation)', ''),
@@ -470,7 +469,7 @@ function App() {
           <div className="text-center mb-2">
             <h1 className="text-white text-3xl font-black tracking-wide">Memory Watch</h1>
             <p className="text-white/70 text-sm mt-1 italic">
-              Dead or Alive helps you find out.
+              Add people you've lost touch with. We'll notify you if a memorial notice is published.
             </p>
             <p className="text-white/50 text-xs mt-2">
               🎁 Free during beta — early users keep free access forever
@@ -524,11 +523,14 @@ function App() {
         {page === 'home' && (
           <div className="space-y-5">
             <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg text-center">
-              <h2 className="text-3xl font-bold mb-1">Dead or Alive</h2>
-              <p className="text-xl font-bold text-white/90 mb-3 tracking-wide">Memory Watch</p>
+              <h2 className="text-3xl font-bold mb-1">Memory Watch</h2>
+              <p className="text-sm font-medium text-white/80 mb-3">Memorial Alerts</p>
               <p className="text-white/90 text-sm">Welcome, {user?.name}! 👋</p>
               <p className="text-white/80 text-sm">Monitoring {watchlist.length} people</p>
             </div>
+            <p className="text-white/90 text-center text-sm font-medium bg-black/20 rounded-xl px-4 py-3 backdrop-blur-sm">
+              Add people you've lost touch with. We'll notify you if a memorial notice is published.
+            </p>
             <div className="grid grid-cols-2 gap-4">
               <button onClick={() => setPage('search')}
                 className="bg-white/70 rounded-xl p-5 shadow-lg backdrop-blur-sm text-left">
@@ -548,11 +550,6 @@ function App() {
                 <p className="text-base text-gray-600 mt-1">Save names to monitor — get notified if their status changes</p>
               </button>
             </div>
-            <div className="bg-white/70 rounded-2xl p-5 shadow-lg backdrop-blur-sm">
-              <p className="text-gray-800 text-base leading-relaxed text-center italic">
-                Dead or Alive helps you find out. Search millions of obituaries from Legacy and Wikipedia records — no guessing, no googling, just answers.
-              </p>
-            </div>
           </div>
         )}
 
@@ -560,7 +557,8 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h2 className="text-3xl font-bold mb-1 text-center">Watchlist</h2>
-              <p className="text-base text-gray-500 mb-6 text-center">Add a new person to monitor</p>
+              <p className="text-base text-gray-500 mb-2 text-center">Add a new person to monitor</p>
+              <p className="text-sm text-gray-400 mb-6 text-center italic">We'll notify you if a memorial notice is published</p>
               <div className="space-y-4">
                 <input type="text" placeholder="Full Name (First and Last)"
                   value={nw.name}
@@ -693,13 +691,13 @@ function App() {
         {page === 'notifications' && (
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-              <h2 className="text-2xl font-bold mb-1 text-center">Notifications</h2>
-              <p className="text-base text-gray-500 mb-6 text-center">Watchlist matches found</p>
+              <h2 className="text-2xl font-bold mb-1 text-center">Alerts</h2>
+              <p className="text-base text-gray-500 mb-6 text-center">Memorial notices for your watchlist</p>
               {notifications.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-5xl mb-4">🔔</p>
-                  <p className="text-gray-600 font-medium">No notifications yet</p>
-                  <p className="text-gray-500 text-sm mt-2">We'll alert you here when someone on your watchlist passes away</p>
+                  <p className="text-gray-600 font-medium">No alerts yet</p>
+                  <p className="text-gray-500 text-sm mt-2">We'll notify you here when someone on your watchlist passes away</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -722,7 +720,7 @@ function App() {
         )}
 
         {page === 'settings' && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-8">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h2 className="text-xl font-bold mb-4">Account</h2>
               <div className="p-3 bg-white/60 rounded-lg mb-4">
@@ -760,7 +758,7 @@ function App() {
               className="w-full py-4 bg-red-500 text-white rounded-lg text-lg font-bold">
               Sign Out
             </button>
-            <div className="mt-8 pt-4 border-t border-gray-300/50">
+            <div className="pt-4 border-t border-gray-300/50">
               <button onClick={() => setShowDangerZone(!showDangerZone)}
                 className="w-full py-2 text-gray-500 text-sm text-center">
                 {showDangerZone ? '▲ Hide' : '▼ Account Removal'}
@@ -872,7 +870,6 @@ function App() {
 
       </div>
 
-      {/* Bottom Navigation */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         backgroundColor: 'rgba(255,255,255,0.85)',
