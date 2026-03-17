@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '0.9.6';
+const APP_VERSION = '0.9.7';
 
 const toTitleCase = (str) => {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
@@ -135,6 +135,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
   const [results, setResults] = useState([]);
+  const [searched, setSearched] = useState(false);
   const [wikiProfile, setWikiProfile] = useState(null);
   const [watchlistWiki, setWatchlistWiki] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -211,6 +212,7 @@ function App() {
     setResults([]);
     setWikiProfile(null);
     setWatchlistWiki(null);
+    setSearched(false);
   };
 
   const doDeleteAccount = async () => {
@@ -234,6 +236,7 @@ function App() {
     setSBirthYear('');
     setWikiProfile(null);
     setResults([]);
+    setSearched(false);
   };
 
   const fetchWikiProfile = async (name) => {
@@ -305,8 +308,6 @@ function App() {
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
       setNw({ name: '', location: '', birthYear: '' });
-      // Don't clear watchlistWiki here — let it stay visible
-      // It will clear when user types a new name
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -338,6 +339,7 @@ function App() {
     setLoading(true);
     setWikiProfile(null);
     setResults([]);
+    setSearched(false);
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/search`, {
@@ -346,13 +348,18 @@ function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name: toTitleCase(sName), location: sLoc || undefined })
+        body: JSON.stringify({
+          name: toTitleCase(sName),
+          location: sLoc || undefined,
+          birth_year: sBirthYear || undefined
+        })
       });
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
       setResults(data);
       const profile = await fetchWikiProfile(sName);
       if (profile) setWikiProfile(profile);
+      setSearched(true);
     } catch (error) {
       alert('Error: ' + error.message);
     } finally {
@@ -504,12 +511,12 @@ function App() {
               <button onClick={() => setPage('search')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
                 <SearchIcon />
                 <h3 className="font-bold text-gray-800 mt-3 text-lg">Search</h3>
-                <p className="text-sm text-gray-600 mt-1">Look up anyone by name to find out if they are still with us</p>
+                <p className="text-base text-gray-600 mt-1">Look up anyone by name to find out if they are still with us</p>
               </button>
               <button onClick={() => setPage('watchlist')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
                 <HeartIcon />
                 <h3 className="font-bold text-gray-800 mt-3 text-lg">Watchlist</h3>
-                <p className="text-sm text-gray-600 mt-1">Save names to monitor — get notified if their status changes</p>
+                <p className="text-base text-gray-600 mt-1">Save names to monitor — get notified if their status changes</p>
               </button>
             </div>
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
@@ -524,7 +531,7 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h2 className="text-3xl font-bold mb-1 text-center">Watchlist</h2>
-              <p className="text-gray-500 text-base mb-6 text-center">Add a new person to monitor</p>
+              <p className="text-base text-gray-500 mb-6 text-center">Add a new person to monitor</p>
               <div className="space-y-4">
                 <input
                   type="text"
@@ -596,13 +603,13 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h2 className="text-3xl font-bold mb-1 text-center">Search</h2>
-              <p className="text-gray-500 text-base mb-6 text-center">Search to find people that matter to you</p>
+              <p className="text-base text-gray-500 mb-4 text-center">Search to find people that matter to you</p>
               <div className="space-y-4">
                 <input
                   type="text"
                   placeholder="Full Name (First and Last)"
                   value={sName}
-                  onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); }}
+                  onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); setSearched(false); }}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
                 />
@@ -637,7 +644,17 @@ function App() {
                 </div>
               </div>
             </div>
+
             {wikiProfile && !loading && <WikiCard profile={wikiProfile} showAddButton={true} />}
+
+            {!loading && searched && !wikiProfile && results.length === 0 && (
+              <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm text-center">
+                <p className="text-4xl mb-3">🔍</p>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">No results found for "{sName}"</h3>
+                <p className="text-gray-600 text-sm">Try checking the spelling, adding a middle name, or searching a different variation of the name.</p>
+              </div>
+            )}
+
             {results.length > 0 && (
               <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
                 <h2 className="text-xl font-bold mb-4">Death Records ({results.length})</h2>
@@ -771,7 +788,7 @@ function App() {
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <BackButton onClick={() => setPage('settings')} />
               <h2 className="text-2xl font-bold mb-6">Privacy Policy</h2>
-              <p className="text-gray-600 text-sm mb-6">Last updated: March 15, 2026</p>
+              <p className="text-gray-600 text-sm mb-6">Last updated: March 16, 2026</p>
               <div className="space-y-6 text-gray-800 text-base leading-relaxed">
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3>
@@ -783,7 +800,7 @@ function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">3. Data Sources</h3>
-                  <p>Search results are powered by FamilySearch (familysearch.org) for genealogical death records, and Wikipedia (wikipedia.org) for biographical information. These are free, publicly available services. We do not permanently store their content.</p>
+                  <p>Search results are powered by obituary feeds from newspapers nationwide, and Wikipedia for biographical information on notable people. We do not permanently store third party content.</p>
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">4. Data Storage</h3>
@@ -799,7 +816,7 @@ function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">7. Third Party Services</h3>
-                  <p>We use Render.com for hosting, Vercel for frontend delivery, FamilySearch API for death records, and Wikipedia API for biographical data.</p>
+                  <p>We use Render.com for hosting, Vercel for frontend delivery, and Wikipedia API for biographical data.</p>
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">8. Contact</h3>
