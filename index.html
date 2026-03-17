@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#9333ea">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Dead or Alive</title>
-  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiRGVhZCBvciBBbGl2ZSIsInNob3J0X25hbWUiOiJEZWFkL0FsaXZlIiwic3RhcnRfdXJsIjoiLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMxZTFiNGIiLCJ0aGVtZV9jb2xvciI6IiM5MzMzZWEifQ==">
+  <title>Dead or Alive — Memory Watch</title>
+  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiTWVtb3J5IFdhdGNoIiwic2hvcnRfbmFtZSI6Ik1lbW9yeSBXYXRjaCIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjMWUxYjRiIiwidGhlbWVfY29sb3IiOiIjOTMzM2VhIn0=">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -25,10 +25,13 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '0.9.7';
+const APP_VERSION = '1.0 Beta';
 
 const toTitleCase = (str) => {
-  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+  if (!str) return str;
+  return str
+    .replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+    .replace(/'\w/g, (txt) => txt.toUpperCase());
 };
 
 const HomeIcon = () => (
@@ -36,51 +39,48 @@ const HomeIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
   </svg>
 );
-
 const HeartIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
   </svg>
 );
-
 const SearchIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
-
 const SettingsIcon = () => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
-
+const BellIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+  </svg>
+);
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
   </svg>
 );
-
 const TrashIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
   </svg>
 );
-
 const CheckIcon = () => (
   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
   </svg>
 );
-
 const EyeIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
   </svg>
 );
-
 const EyeOffIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
@@ -107,13 +107,10 @@ const PageWrapper = ({ children }) => (
     backgroundAttachment: 'scroll',
   }}>
     <div style={{
-      position: 'absolute',
-      top: 0, left: 0, right: 0, bottom: 0,
+      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       backgroundColor: 'rgba(249,250,251,0.15)',
     }} />
-    <div style={{ position: 'relative', zIndex: 10 }}>
-      {children}
-    </div>
+    <div style={{ position: 'relative', zIndex: 10 }}>{children}</div>
   </div>
 );
 
@@ -122,6 +119,8 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const firstSentence = extract.split('.')[0];
   const hasDeathInBrackets = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(firstSentence);
   const hasYearsInDescription = /\(\d{4}\s*[-–—]\s*\d{4}\)/.test(description);
+  const hasBornOnly = /\(born\s+\w+\s+\d+,\s+\d{4}\)/.test(firstSentence);
+  if (hasBornOnly) return false;
   const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\(born/.test(firstSentence);
   const diedInExtract = /\b(died|death|passed away|deceased)\b/i.test(extract);
   const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
@@ -134,11 +133,13 @@ function App() {
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
   const [watchlist, setWatchlist] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [results, setResults] = useState([]);
   const [searched, setSearched] = useState(false);
   const [wikiProfile, setWikiProfile] = useState(null);
   const [watchlistWiki, setWatchlistWiki] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [backendWaking, setBackendWaking] = useState(false);
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -158,6 +159,7 @@ function App() {
       setAuth(true);
       setPage('home');
       loadWatchlist();
+      loadNotifications();
     }
   }, []);
 
@@ -170,14 +172,26 @@ function App() {
       if (!response.ok) throw new Error('Failed');
       const data = await response.json();
       setWatchlist(data);
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed');
+      const data = await response.json();
+      setNotifications(data);
+    } catch (error) { console.error(error); }
   };
 
   const doAuth = async () => {
     if (!email || !password) return;
     setLoading(true);
+    setBackendWaking(false);
+    const wakeTimer = setTimeout(() => setBackendWaking(true), 3000);
     try {
       const endpoint = mode === 'login' ? 'login' : 'register';
       const response = await fetch(`${API_BASE}/auth/${endpoint}`, {
@@ -185,6 +199,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
+      clearTimeout(wakeTimer);
+      setBackendWaking(false);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Auth failed');
@@ -197,7 +213,10 @@ function App() {
       setAuth(true);
       setPage('home');
       loadWatchlist();
+      loadNotifications();
     } catch (error) {
+      clearTimeout(wakeTimer);
+      setBackendWaking(false);
       alert('Error: ' + error.message);
     } finally {
       setLoading(false);
@@ -209,6 +228,7 @@ function App() {
     setAuth(false);
     setUser(null);
     setWatchlist([]);
+    setNotifications([]);
     setResults([]);
     setWikiProfile(null);
     setWatchlistWiki(null);
@@ -231,12 +251,8 @@ function App() {
   };
 
   const clearSearch = () => {
-    setSName('');
-    setSLoc('');
-    setSBirthYear('');
-    setWikiProfile(null);
-    setResults([]);
-    setSearched(false);
+    setSName(''); setSLoc(''); setSBirthYear('');
+    setWikiProfile(null); setResults([]); setSearched(false);
   };
 
   const fetchWikiProfile = async (name) => {
@@ -250,24 +266,28 @@ function App() {
       const extract = wikiData.extract || '';
       const description = wikiData.description || '';
       const type = wikiData.type || '';
+      // Handle disambiguation — try to find actual person
+      if (type === 'disambiguation') {
+        return {
+          title: wikiData.title.replace(' (disambiguation)', ''),
+          extract, thumbnail: wikiData.thumbnail?.source,
+          birthDate: null, deathDate: null,
+          description, isDisambiguation: true,
+        };
+      }
       const deceased = isDeceasedCheck(extract, description, wikiData.death_date, type);
       return {
-        title: wikiData.title,
-        extract: extract,
+        title: wikiData.title, extract,
         thumbnail: wikiData.thumbnail?.source,
         birthDate: wikiData.birth_date || null,
         deathDate: deceased ? (wikiData.death_date || 'deceased') : null,
-        description: description,
-        isDisambiguation: type === 'disambiguation',
+        description, isDisambiguation: false,
       };
-    } catch (e) {
-      return null;
-    }
+    } catch (e) { return null; }
   };
 
-  const isOnWatchlist = (name) => {
-    return watchlist.some(w => w.name.toLowerCase() === name.toLowerCase());
-  };
+  const isOnWatchlist = (name) =>
+    watchlist.some(w => w.name.toLowerCase() === name.toLowerCase());
 
   const addWatch = async (nameOverride) => {
     const name = toTitleCase(nameOverride || nw.name);
@@ -296,14 +316,10 @@ function App() {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/watchlist`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(nameOverride
           ? { name, location: '', dob: '' }
-          : { name, location: nw.location, dob: nw.birthYear }
-        )
+          : { name, location: nw.location, dob: nw.birthYear })
       });
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
@@ -324,9 +340,7 @@ function App() {
       });
       if (!response.ok) throw new Error('Failed');
       await loadWatchlist();
-    } catch (error) {
-      alert('Error: ' + error.message);
-    }
+    } catch (error) { alert('Error: ' + error.message); }
   };
 
   const doSearch = async () => {
@@ -344,10 +358,7 @@ function App() {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/search`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           name: toTitleCase(sName),
           location: sLoc || undefined,
@@ -366,6 +377,8 @@ function App() {
       setLoading(false);
     }
   };
+
+  const unreadCount = notifications.length;
 
   const WikiCard = ({ profile, showAddButton }) => {
     const alreadyWatching = isOnWatchlist(profile.title);
@@ -389,11 +402,9 @@ function App() {
               <div className="w-20 h-20 rounded-full bg-purple-800/40 flex items-center justify-center shrink-0 text-3xl">👤</div>
             )}
             <div className="flex-1">
-              <h2 className="text-white text-xl font-bold mb-1">{isDisambig ? profile.title.replace(' (disambiguation)', '') : profile.title}</h2>
+              <h2 className="text-white text-xl font-bold mb-1">{profile.title}</h2>
               {!isDisambig && <p className="text-purple-300 text-sm italic mb-1">{profile.description}</p>}
-              {profile.birthDate && (
-                <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>
-              )}
+              {profile.birthDate && <p className="text-purple-400 text-xs">🎂 Born: {profile.birthDate}</p>}
             </div>
           </div>
           {isDisambig ? (
@@ -439,7 +450,7 @@ function App() {
           )}
           <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
             <p className="text-purple-200 text-xs leading-relaxed">
-              💜 Data provided by Wikipedia. Dead or Alive donates a portion of revenues to the Wikimedia Foundation.
+              💜 Data provided by Wikipedia. Memory Watch donates a portion of revenues to the Wikimedia Foundation.
             </p>
           </div>
         </div>
@@ -450,46 +461,57 @@ function App() {
   if (!auth) {
     return (
       <div style={{
-        minHeight: '100dvh',
-        width: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'flex-end',
-        paddingBottom: '15rem',
+        minHeight: '100dvh', width: '100%',
+        display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
         backgroundImage: 'url(https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/IMG_0437.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center top',
-        backgroundRepeat: 'no-repeat',
+        backgroundSize: 'cover', backgroundPosition: 'center top', backgroundRepeat: 'no-repeat',
       }}>
-        <div className="bg-black/40 backdrop-blur-sm p-3 space-y-2">
-          <div className="flex gap-3 mb-2">
-            <button onClick={() => setMode('login')}
-              className={`flex-1 py-3 rounded-xl font-bold text-xl ${mode === 'login' ? 'bg-purple-500 text-white' : 'bg-white/20 text-white/70'}`}>
-              Login
-            </button>
-            <button onClick={() => setMode('register')}
-              className={`flex-1 py-3 rounded-xl font-bold text-xl ${mode === 'register' ? 'bg-purple-500 text-white' : 'bg-white/20 text-white/70'}`}>
-              Register
-            </button>
+        <div className="bg-black/50 backdrop-blur-sm p-4 space-y-3">
+          <div className="text-center mb-2">
+            <h1 className="text-white text-3xl font-black tracking-wide">Memory Watch</h1>
+            <p className="text-white/70 text-sm mt-1 italic">
+              Dead or Alive helps you find out.
+            </p>
+            <p className="text-white/50 text-xs mt-2">
+              🎁 Free during beta — early users keep free access forever
+            </p>
           </div>
-          <input type="email" placeholder="Email" value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-            className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
-          <div className="relative">
-            <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
-              onChange={(e) => setPassword(e.target.value)}
+          <div className="max-w-sm mx-auto w-full space-y-3">
+            <input type="email" placeholder="Email address" value={email}
+              onChange={(e) => setEmail(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-              className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
-            <button onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60">
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-            </button>
+              className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && doAuth()}
+                className="w-full px-5 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
+              <button onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60">
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
+            {backendWaking && (
+              <p className="text-white/60 text-xs text-center animate-pulse">
+                ⏳ Waking up the server... this may take 30 seconds...
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => { setMode('login'); doAuth(); }}
+                disabled={loading}
+                className="py-3 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl disabled:opacity-50 text-lg">
+                {loading && mode === 'login' ? '...' : 'Sign In'}
+              </button>
+              <button onClick={() => { setMode('register'); doAuth(); }}
+                disabled={loading}
+                className="py-3 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl disabled:opacity-50 text-lg border border-white/30">
+                {loading && mode === 'register' ? '...' : 'Register'}
+              </button>
+            </div>
+            <p className="text-white/40 text-xs text-center">
+              You'll stay signed in automatically
+            </p>
           </div>
-          <button onClick={doAuth} disabled={loading}
-            className="w-full py-4 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl disabled:opacity-50 text-xl tracking-wide">
-            {loading ? 'Loading...' : mode === 'login' ? 'Login' : 'Create Account'}
-          </button>
         </div>
       </div>
     );
@@ -500,28 +522,35 @@ function App() {
       <div className="w-full max-w-2xl mx-auto p-4">
 
         {page === 'home' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-lg text-center">
               <h2 className="text-3xl font-bold mb-1">Dead or Alive</h2>
-              <p className="text-2xl font-bold text-white/90 mb-3 tracking-wide">Memorial Watch</p>
-              <p className="text-white/90">Welcome, {user?.name}! 👋</p>
+              <p className="text-xl font-bold text-white/90 mb-3 tracking-wide">Memory Watch</p>
+              <p className="text-white/90 text-sm">Welcome, {user?.name}! 👋</p>
               <p className="text-white/80 text-sm">Monitoring {watchlist.length} people</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setPage('search')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
+              <button onClick={() => setPage('search')}
+                className="bg-white/70 rounded-xl p-5 shadow-lg backdrop-blur-sm text-left">
                 <SearchIcon />
                 <h3 className="font-bold text-gray-800 mt-3 text-lg">Search</h3>
                 <p className="text-base text-gray-600 mt-1">Look up anyone by name to find out if they are still with us</p>
               </button>
-              <button onClick={() => setPage('watchlist')} className="bg-white/70 rounded-xl p-6 shadow-lg backdrop-blur-sm text-left">
+              <button onClick={() => setPage('watchlist')}
+                className="bg-white/70 rounded-xl p-5 shadow-lg backdrop-blur-sm text-left relative">
+                {unreadCount > 0 && (
+                  <span className="absolute top-3 right-3 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
                 <HeartIcon />
                 <h3 className="font-bold text-gray-800 mt-3 text-lg">Watchlist</h3>
                 <p className="text-base text-gray-600 mt-1">Save names to monitor — get notified if their status changes</p>
               </button>
             </div>
-            <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-              <p className="text-gray-800 text-lg font-bold italic leading-relaxed text-center">
-                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+            <div className="bg-white/70 rounded-2xl p-5 shadow-lg backdrop-blur-sm">
+              <p className="text-gray-800 text-base leading-relaxed text-center italic">
+                Dead or Alive helps you find out. Search millions of obituaries from Legacy and Wikipedia records — no guessing, no googling, just answers.
               </p>
             </div>
           </div>
@@ -533,37 +562,25 @@ function App() {
               <h2 className="text-3xl font-bold mb-1 text-center">Watchlist</h2>
               <p className="text-base text-gray-500 mb-6 text-center">Add a new person to monitor</p>
               <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Full Name (First and Last)"
+                <input type="text" placeholder="Full Name (First and Last)"
                   value={nw.name}
                   onChange={(e) => { setNw({...nw, name: e.target.value}); setWatchlistWiki(null); }}
                   onBlur={(e) => setNw({...nw, name: toTitleCase(e.target.value)})}
                   onKeyPress={(e) => e.key === 'Enter' && addWatch()}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
-                <input
-                  type="text"
-                  placeholder="Location (optional)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
+                <input type="text" placeholder="Location (optional)"
                   value={nw.location}
                   onChange={(e) => setNw({...nw, location: e.target.value})}
                   onKeyPress={(e) => e.key === 'Enter' && addWatch()}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
-                <input
-                  type="text"
-                  placeholder="Birth Year (optional, e.g. 1952)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
+                <input type="text" placeholder="Birth Year (optional, e.g. 1952)"
                   value={nw.birthYear}
                   onChange={(e) => setNw({...nw, birthYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
                   onKeyPress={(e) => e.key === 'Enter' && addWatch()}
                   maxLength={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
-                <button
-                  onClick={() => addWatch()}
-                  disabled={loading}
-                  className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold"
-                >
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
+                <button onClick={() => addWatch()} disabled={loading}
+                  className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
                   <PlusIcon /> {loading ? 'Checking...' : 'Add to Watchlist'}
                 </button>
               </div>
@@ -583,12 +600,13 @@ function App() {
                           {w.location && <span>{w.location}</span>}
                           {w.dob && <span> • Born: {w.dob}</span>}
                         </div>
-                        <div className="flex items-center gap-1 mt-2">
+                        <div className="flex items-center gap-1 mt-1">
                           <CheckIcon />
                           <span className="text-xs text-green-600">Active</span>
                         </div>
                       </div>
-                      <button onClick={() => delWatch(w.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
+                      <button onClick={() => delWatch(w.id)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
                         <TrashIcon />
                       </button>
                     </div>
@@ -602,34 +620,25 @@ function App() {
         {page === 'search' && (
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-              <h2 className="text-3xl font-bold mb-1 text-center">Search</h2>
-              <p className="text-base text-gray-500 mb-4 text-center">Search to find people that matter to you</p>
+              <h2 className="text-xl font-bold mb-1">Search</h2>
+              <p className="text-base text-gray-500 mb-4">Search to find people that matter to you</p>
               <div className="space-y-4">
-                <input
-                  type="text"
-                  placeholder="Full Name (First and Last)"
+                <input type="text" placeholder="Full Name (First and Last)"
                   value={sName}
                   onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); setSearched(false); }}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
-                <input
-                  type="text"
-                  placeholder="Location (optional)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
+                <input type="text" placeholder="Location (optional)"
                   value={sLoc}
                   onChange={(e) => setSLoc(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
-                <input
-                  type="text"
-                  placeholder="Birth Year (optional, e.g. 1952)"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
+                <input type="text" placeholder="Birth Year (optional, e.g. 1952)"
                   value={sBirthYear}
                   onChange={(e) => setSBirthYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
                   onKeyPress={(e) => e.key === 'Enter' && doSearch()}
                   maxLength={4}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80"
-                />
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/80" />
                 <div className="flex gap-3">
                   <button onClick={doSearch} disabled={loading}
                     className="flex-1 py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
@@ -637,16 +646,12 @@ function App() {
                   </button>
                   {(sName || wikiProfile || results.length > 0) && (
                     <button onClick={clearSearch}
-                      className="py-4 px-5 bg-gray-200 text-gray-600 rounded-lg text-lg font-bold">
-                      ✕
-                    </button>
+                      className="py-4 px-5 bg-gray-200 text-gray-600 rounded-lg text-lg font-bold">✕</button>
                   )}
                 </div>
               </div>
             </div>
-
             {wikiProfile && !loading && <WikiCard profile={wikiProfile} showAddButton={true} />}
-
             {!loading && searched && !wikiProfile && results.length === 0 && (
               <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm text-center">
                 <p className="text-4xl mb-3">🔍</p>
@@ -654,10 +659,9 @@ function App() {
                 <p className="text-gray-600 text-sm">Try checking the spelling, adding a middle name, or searching a different variation of the name.</p>
               </div>
             )}
-
             {results.length > 0 && (
               <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-                <h2 className="text-xl font-bold mb-4">Death Records ({results.length})</h2>
+                <h2 className="text-xl font-bold mb-4">Obituary Records ({results.length})</h2>
                 <div className="space-y-3">
                   {results.map(r => (
                     <div key={r.id} className="p-4 border rounded-lg bg-white/60">
@@ -673,11 +677,47 @@ function App() {
                         <p>Date: {r.date || 'Unknown'}</p>
                         <p>Source: {r.source}</p>
                       </div>
+                      {r.obit_text && (
+                        <p className="text-sm text-gray-700 mt-3 leading-relaxed border-t pt-3">
+                          {r.obit_text.slice(0, 300)}{r.obit_text.length > 300 ? '...' : ''}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {page === 'notifications' && (
+          <div className="space-y-6">
+            <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
+              <h2 className="text-2xl font-bold mb-1 text-center">Notifications</h2>
+              <p className="text-base text-gray-500 mb-6 text-center">Watchlist matches found</p>
+              {notifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-5xl mb-4">🔔</p>
+                  <p className="text-gray-600 font-medium">No notifications yet</p>
+                  <p className="text-gray-500 text-sm mt-2">We'll alert you here when someone on your watchlist passes away</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map(n => (
+                    <div key={n.id} className="p-4 bg-red-50/80 border border-red-200 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <span className="text-2xl">⚫</span>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-800 text-lg">{n.name}</h3>
+                          <p className="text-gray-600 text-sm mt-1">{n.message}</p>
+                          <p className="text-gray-400 text-xs mt-2">{new Date(n.created_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -691,7 +731,7 @@ function App() {
               <div className="space-y-3">
                 <button onClick={() => setPage('about')}
                   className="w-full py-3 bg-purple-100/80 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
-                  ℹ️ About Memorial Watch
+                  ℹ️ About Memory Watch
                 </button>
                 <button onClick={() => setPage('privacy')}
                   className="w-full py-3 bg-purple-100/80 text-purple-700 rounded-lg text-lg font-medium text-left px-4">
@@ -707,6 +747,9 @@ function App() {
                 </div>
                 <div className="p-3 bg-blue-100/80 rounded-lg">
                   <span className="text-blue-800">🔄 Wikipedia: Connected</span>
+                </div>
+                <div className="p-3 bg-orange-100/80 rounded-lg">
+                  <span className="text-orange-800">📰 Legacy: Connected</span>
                 </div>
                 <div className="p-3 bg-purple-100/80 rounded-lg">
                   <span className="text-purple-800">📱 Version {APP_VERSION}</span>
@@ -753,16 +796,16 @@ function App() {
           <div className="space-y-6">
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <BackButton onClick={() => setPage('settings')} />
-              <h2 className="text-2xl font-bold mb-2">About Memorial Watch</h2>
+              <h2 className="text-2xl font-bold mb-2">About Memory Watch</h2>
               <p className="text-purple-700 italic text-base leading-relaxed mb-6">
-                "Discover the life stories of people who matter to you. Search billions of records from FamilySearch and Wikipedia to learn if long lost friends, family, and public figures are still with us."
+                Three brains. One mission. Memory Watch.
               </p>
               <div className="space-y-4 text-gray-800 text-base leading-relaxed">
-                <p>Memorial Watch was produced by three brains. Mine, ChatGPT and Claude. I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
-                <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now (other than stock trading platforms) is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memorial Watch.</p>
-                <p>We have partnered with FamilySearch, a genealogy website maintained by the Church of Jesus Christ of Latter-day Saints that stores obituary information dating back to 1936. With Memorial Watch you can enter a name and Memorial Watch will either inform you whether that person is still alive or not. If available, Memorial Watch will also provide a short bio if the person is famous, or the obituary itself.</p>
-                <p>Memorial Watch is also partnered with Wikipedia which provides biography information on famous or notable people that we display for Watchlist and Search results. A portion of proceeds will be donated to Wikipedia to help assure their continued great service.</p>
-                <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memorial Watch, please contact us with your suggestions.</p>
+                <p>Memory Watch was produced by three brains — mine, ChatGPT, and Claude (Anthropic). I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
+                <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now (other than stock trading platforms) is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memory Watch.</p>
+                <p>We have partnered with Legacy, the largest obituary platform in the United States, covering more than 70% of all U.S. deaths through partnerships with thousands of newspapers and funeral homes nationwide. Memory Watch monitors Legacy continuously, so when someone on your watchlist passes away, you'll know.</p>
+                <p>Memory Watch is also partnered with Wikipedia which provides biography information on famous or notable people. The intelligent search and detection system powering our ALIVE/DECEASED engine was developed with Claude by Anthropic. A portion of proceeds will be donated to Wikipedia to help assure their continued great service.</p>
+                <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memory Watch, please contact us with your suggestions.</p>
               </div>
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center gap-4">
@@ -771,10 +814,8 @@ function App() {
                   <div>
                     <p className="font-bold text-gray-800 text-lg">Bill Spencer</p>
                     <p className="text-purple-600 italic">Idea Hamster 🐹</p>
-                    <a href="mailto:contact@memorialwatch.com"
-                      className="text-purple-600 text-sm mt-1 block">
-                      contact@memorialwatch.com
-                    </a>
+                    <a href="mailto:contact@memorywatch.com"
+                      className="text-purple-600 text-sm mt-1 block">contact@memorywatch.com</a>
                   </div>
                 </div>
               </div>
@@ -788,7 +829,7 @@ function App() {
             <div className="bg-white/70 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <BackButton onClick={() => setPage('settings')} />
               <h2 className="text-2xl font-bold mb-6">Privacy Policy</h2>
-              <p className="text-gray-600 text-sm mb-6">Last updated: March 16, 2026</p>
+              <p className="text-gray-600 text-sm mb-6">Last updated: March 17, 2026</p>
               <div className="space-y-6 text-gray-800 text-base leading-relaxed">
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3>
@@ -800,7 +841,7 @@ function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">3. Data Sources</h3>
-                  <p>Search results are powered by obituary feeds from newspapers nationwide, and Wikipedia for biographical information on notable people. We do not permanently store third party content.</p>
+                  <p>Search results are powered by Legacy obituary feeds from thousands of newspapers nationwide, and Wikipedia for biographical information on notable people. We do not permanently store third party content beyond what is necessary to operate the service.</p>
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">4. Data Storage</h3>
@@ -816,13 +857,12 @@ function App() {
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">7. Third Party Services</h3>
-                  <p>We use Render.com for hosting, Vercel for frontend delivery, and Wikipedia API for biographical data.</p>
+                  <p>We use Render.com for hosting, Vercel for frontend delivery, Legacy for obituary data, and Wikipedia API for biographical data.</p>
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-900 mb-2">8. Contact</h3>
                   <p>For privacy concerns please contact us at:</p>
-                  <a href="mailto:contact@memorialwatch.com"
-                    className="text-purple-600">contact@memorialwatch.com</a>
+                  <a href="mailto:contact@memorywatch.com" className="text-purple-600">contact@memorywatch.com</a>
                 </div>
               </div>
               <BackButton onClick={() => setPage('settings')} />
@@ -832,9 +872,9 @@ function App() {
 
       </div>
 
+      {/* Bottom Navigation */}
       <div style={{
-        position: 'fixed',
-        bottom: 0, left: 0, right: 0,
+        position: 'fixed', bottom: 0, left: 0, right: 0,
         backgroundColor: 'rgba(255,255,255,0.85)',
         backdropFilter: 'blur(8px)',
         borderTop: '1px solid #e5e7eb',
@@ -842,21 +882,31 @@ function App() {
         paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
       }}>
         <div className="flex justify-around max-w-2xl mx-auto">
-          <button onClick={() => setPage('home')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'home' ? 'text-purple-500' : 'text-gray-400'}`}>
-            <HomeIcon />
-            <span className="text-xs">Home</span>
+          <button onClick={() => setPage('home')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'home' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <HomeIcon /><span className="text-xs">Home</span>
           </button>
-          <button onClick={() => setPage('search')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'search' ? 'text-purple-500' : 'text-gray-400'}`}>
-            <SearchIcon />
-            <span className="text-xs">Search</span>
+          <button onClick={() => setPage('search')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'search' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <SearchIcon /><span className="text-xs">Search</span>
           </button>
-          <button onClick={() => setPage('watchlist')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'watchlist' ? 'text-purple-500' : 'text-gray-400'}`}>
-            <HeartIcon />
-            <span className="text-xs">Watchlist</span>
+          <button onClick={() => setPage('watchlist')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'watchlist' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <HeartIcon /><span className="text-xs">Watchlist</span>
           </button>
-          <button onClick={() => setPage('settings')} className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'settings' ? 'text-purple-500' : 'text-gray-400'}`}>
-            <SettingsIcon />
-            <span className="text-xs">Settings</span>
+          <button onClick={() => setPage('notifications')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 relative ${page === 'notifications' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <BellIcon />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-2 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+            <span className="text-xs">Alerts</span>
+          </button>
+          <button onClick={() => setPage('settings')}
+            className={`flex flex-col items-center gap-1 px-4 py-2 ${page === 'settings' ? 'text-purple-500' : 'text-gray-400'}`}>
+            <SettingsIcon /><span className="text-xs">Settings</span>
           </button>
         </div>
       </div>
