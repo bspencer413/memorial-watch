@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.5e';
+const APP_VERSION = '1.0.5f';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -120,9 +120,13 @@ const PageWrapper = ({ children }) => (
     paddingTop: '1rem', paddingBottom: '5rem',
     backgroundImage: `url(${SUNSET_BG})`,
     backgroundSize: 'cover',
+    backgroundPosition: 'center center',
+    backgroundAttachment: 'scroll',
+    minHeight: '100%',
+
     backgroundPosition: 'center top',
     backgroundRepeat: 'no-repeat',
-    backgroundAttachment: 'fixed',
+    backgroundAttachment: 'scroll',
   }}>
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.10)' }} />
     <div style={{ position: 'relative', zIndex: 10 }}>{children}</div>
