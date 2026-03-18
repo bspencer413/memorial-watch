@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.5d';
+const APP_VERSION = '1.0.5e';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -317,15 +317,21 @@ function App() {
   };
 
   const unreadCount = notifications.length;
-  const iClass = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/60 text-gray-800 placeholder-gray-400";
+  const iClass = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-lg bg-white/60 text-gray-800 placeholder-gray-500";
   const cardClass = "bg-white/30 rounded-2xl p-6 shadow-lg backdrop-blur-sm border border-white/40";
-
-  // Shared card style for home page action cards
   const homeCardStyle = {
     background: 'rgba(255,255,255,0.22)',
     backdropFilter: 'blur(8px)',
     border: '1px solid rgba(255,255,255,0.35)'
   };
+
+  // Consistent page header component
+  const PageHeader = ({ title, subtitle }) => (
+    <div className="text-center mb-6">
+      <h2 className="text-3xl font-bold text-gray-800">{title}</h2>
+      <p className="text-lg text-gray-700 mt-2">{subtitle}</p>
+    </div>
+  );
 
   const WikiCard = ({ profile, showAddButton }) => {
     const alreadyWatching = isOnWatchlist(profile.title);
@@ -427,16 +433,16 @@ function App() {
           <div className="bg-black/45 backdrop-blur-sm rounded-3xl p-8 shadow-2xl space-y-4 border border-white/10">
             <div className="text-center mb-2">
               <h1 className="text-white text-4xl font-black tracking-wide">Memory Watch</h1>
-              <p className="text-purple-300 text-sm mt-2 italic">Discover people you miss. Find out if they're still with us.</p>
-              <p className="text-white/50 text-xs mt-2">🎁 Free during beta — early users keep free access forever</p>
+              <p className="text-purple-300 text-lg mt-2 italic">Discover people you miss. Find out if they're still with us.</p>
+              <p className="text-white/60 text-sm mt-2">🎁 Free during beta — early users keep free access forever</p>
             </div>
             <input type="email" placeholder="Email address" value={email}
               onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-              className="w-full px-5 py-4 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
+              className="w-full px-5 py-4 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
             <div className="relative">
               <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password}
                 onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth()}
-                className="w-full px-5 py-4 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
+                className="w-full px-5 py-4 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500 text-lg" />
               <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60">
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
@@ -452,7 +458,7 @@ function App() {
                 {loading && mode === 'register' ? '...' : 'Register'}
               </button>
             </div>
-            <p className="text-white/40 text-xs text-center">You'll stay signed in automatically</p>
+            <p className="text-white/50 text-sm text-center">You'll stay signed in automatically</p>
           </div>
         </div>
       </div>
@@ -465,7 +471,6 @@ function App() {
 
         {page === 'home' && (
           <div className="space-y-6">
-            {/* Hero card */}
             <div className="rounded-3xl overflow-hidden shadow-2xl" style={{
               background: 'linear-gradient(135deg, rgba(88,28,135,0.75) 0%, rgba(157,23,77,0.75) 100%)',
               backdropFilter: 'blur(8px)',
@@ -473,14 +478,12 @@ function App() {
             }}>
               <div className="p-8 text-center">
                 <h1 className="text-white font-black tracking-wide mb-2 drop-shadow-lg" style={{fontSize:'clamp(2rem,5vw,3.5rem)'}}>Memory Watch</h1>
-                <p className="text-purple-200 font-semibold mb-1" style={{fontSize:'clamp(0.9rem,2vw,1.2rem)'}}>Memorial Alerts</p>
+                <p className="text-purple-100 font-semibold mb-1" style={{fontSize:'clamp(1rem,2.2vw,1.3rem)'}}>Memorial Alerts</p>
                 <div className="w-16 h-0.5 bg-purple-300/50 mx-auto my-3" />
-                <p className="text-white/90 mb-1" style={{fontSize:'clamp(0.95rem,2vw,1.1rem)'}}>Welcome, {user?.name}! 👋</p>
-                <p className="text-purple-200" style={{fontSize:'clamp(0.95rem,2vw,1.1rem)'}}>Monitoring <span className="font-bold text-white">{watchlist.length}</span> people</p>
+                <p className="text-white/90 mb-1" style={{fontSize:'clamp(1rem,2vw,1.15rem)'}}>Welcome, {user?.name}! 👋</p>
+                <p className="text-purple-100" style={{fontSize:'clamp(1rem,2vw,1.15rem)'}}>Monitoring <span className="font-bold text-white">{watchlist.length}</span> people</p>
               </div>
             </div>
-
-            {/* Tagline */}
             <div className="rounded-2xl px-6 py-4 text-center" style={{
               background: 'linear-gradient(135deg, rgba(109,40,217,0.55) 0%, rgba(147,51,234,0.45) 100%)',
               backdropFilter: 'blur(4px)',
@@ -490,8 +493,6 @@ function App() {
                 Discover people you miss — search by name and find out if they're still with us.
               </p>
             </div>
-
-            {/* Action cards — identical structure, equal height */}
             <div className="grid grid-cols-2 gap-5 items-stretch">
               <button onClick={() => setPage('search')}
                 className="rounded-2xl p-6 text-left shadow-xl transition-transform active:scale-95 w-full flex flex-col"
@@ -503,15 +504,10 @@ function App() {
                 <h3 className="font-bold text-white drop-shadow mb-2" style={{fontSize:'clamp(1.1rem,2.5vw,1.4rem)'}}>Search</h3>
                 <p className="text-white/80 leading-snug" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Look up anyone by name — find out if they are still with us</p>
               </button>
-
               <button onClick={() => setPage('watchlist')}
                 className="rounded-2xl p-6 text-left shadow-xl relative transition-transform active:scale-95 w-full flex flex-col"
                 style={homeCardStyle}>
-                {unreadCount > 0 && (
-                  <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
+                {unreadCount > 0 && <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg flex-shrink-0"
                   style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
                   <HeartIcon />
@@ -520,8 +516,6 @@ function App() {
                 <p className="text-white/80 leading-snug" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Save names to monitor — get notified when their status changes</p>
               </button>
             </div>
-
-            {/* About — stays small */}
             <button onClick={() => setPage('about')}
               className="w-full rounded-2xl px-6 py-4 text-left shadow-xl transition-transform active:scale-95"
               style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.55) 0%, rgba(147,51,234,0.45) 100%)', backdropFilter: 'blur(6px)', border: '1px solid rgba(167,139,250,0.4)' }}>
@@ -535,9 +529,7 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <h2 className="text-3xl font-bold mb-1 text-center text-gray-800">Watchlist</h2>
-              <p className="text-base text-gray-600 mb-2 text-center">Add a new person to monitor</p>
-              <p className="text-sm text-gray-500 mb-6 text-center italic">We'll notify you if a memorial notice is published</p>
+              <PageHeader title="Watchlist" subtitle="Add a new person to monitor — we'll notify you if a memorial notice is published" />
               {!watchlistChecked ? (
                 <div className="space-y-4">
                   <ClearableInput value={nw.name} onChange={(e) => setNw({...nw, name: e.target.value})} onBlur={(e) => setNw({...nw, name: toTitleCase(e.target.value)})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Full Name (First and Last)" inputClass={iClass} />
@@ -550,7 +542,8 @@ function App() {
               ) : <WatchlistCheckCard />}
             </div>
             <div className={cardClass}>
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Your Watchlist ({watchlist.length})</h2>
+              <h2 className="text-2xl font-bold mb-2 text-gray-800">Your Watchlist ({watchlist.length})</h2>
+              <p className="text-lg text-gray-700 mb-4">People you are currently monitoring</p>
               {watchlist.length === 0 ? <p className="text-gray-600 text-center py-8">No one on your watchlist yet</p> : (
                 <div className="space-y-3">
                   {watchlist.map(w => (
@@ -593,8 +586,7 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <h2 className="text-xl font-bold mb-1 text-gray-800">Search</h2>
-              <p className="text-base text-gray-600 mb-4">Search to find people that matter to you</p>
+              <PageHeader title="Search" subtitle="Look up anyone by name to find out if they are still with us" />
               <div className="space-y-4">
                 <ClearableInput value={sName} onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); setSearched(false); }} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Full Name (First and Last)" inputClass={iClass} />
                 <ClearableInput value={sLoc} onChange={(e) => setSLoc(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Location (optional)" inputClass={iClass} />
@@ -608,13 +600,14 @@ function App() {
             {!loading && searched && !wikiProfile && results.length === 0 && (
               <div className={cardClass + " text-center"}>
                 <p className="text-4xl mb-3">🔍</p>
-                <h3 className="font-bold text-gray-800 text-lg mb-2">No results found for "{sName}"</h3>
-                <p className="text-gray-600 text-sm">Try checking the spelling, adding a middle name, or a different variation.</p>
+                <h3 className="font-bold text-gray-800 text-xl mb-2">No results found for "{sName}"</h3>
+                <p className="text-gray-700 text-base">Try checking the spelling, adding a middle name, or a different variation.</p>
               </div>
             )}
             {results.length > 0 && (
               <div className={cardClass}>
-                <h2 className="text-xl font-bold mb-4 text-gray-800">Obituary Records ({results.length})</h2>
+                <h2 className="text-2xl font-bold mb-2 text-gray-800">Obituary Records ({results.length})</h2>
+                <p className="text-lg text-gray-700 mb-4">Records found in our Legacy database</p>
                 <div className="space-y-3">
                   {results.map(r => (
                     <div key={r.id} className="p-4 border rounded-lg bg-white/60">
@@ -622,13 +615,13 @@ function App() {
                         <h3 className="font-semibold text-lg text-gray-800">{r.name}</h3>
                         <span className={`px-2 py-1 rounded-full text-xs ${r.confidence === 'high' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{r.confidence}</span>
                       </div>
-                      <div className="text-sm text-gray-600 space-y-1">
+                      <div className="text-base text-gray-700 space-y-1">
                         {r.age && <p>Age: {r.age}</p>}
                         <p>Location: {r.location || 'Unknown'}</p>
                         <p>Date: {r.date || 'Unknown'}</p>
                         <p>Source: {r.source}</p>
                       </div>
-                      {r.obit_text && <p className="text-sm text-gray-700 mt-3 leading-relaxed border-t pt-3">{r.obit_text.slice(0, 300)}{r.obit_text.length > 300 ? '...' : ''}</p>}
+                      {r.obit_text && <p className="text-base text-gray-700 mt-3 leading-relaxed border-t pt-3">{r.obit_text.slice(0, 300)}{r.obit_text.length > 300 ? '...' : ''}</p>}
                     </div>
                   ))}
                 </div>
@@ -641,13 +634,12 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <h2 className="text-2xl font-bold mb-1 text-center text-gray-800">Alerts</h2>
-              <p className="text-base text-gray-600 mb-6 text-center">Memorial notices for your watchlist</p>
+              <PageHeader title="Alerts" subtitle="Memorial notices for people on your watchlist" />
               {notifications.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-5xl mb-4">🔔</p>
-                  <p className="text-gray-700 font-medium">No alerts yet</p>
-                  <p className="text-gray-600 text-sm mt-2">We'll notify you here when someone on your watchlist passes away</p>
+                  <p className="text-gray-800 font-bold text-xl">No alerts yet</p>
+                  <p className="text-gray-700 text-lg mt-2">We'll notify you here when someone on your watchlist passes away</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -657,8 +649,8 @@ function App() {
                         <span className="text-2xl">⚫</span>
                         <div className="flex-1">
                           <h3 className="font-bold text-gray-800 text-lg">{n.name}</h3>
-                          <p className="text-gray-600 text-sm mt-1">{n.message}</p>
-                          <p className="text-gray-400 text-xs mt-2">{new Date(n.created_at).toLocaleDateString()}</p>
+                          <p className="text-gray-700 text-base mt-1">{n.message}</p>
+                          <p className="text-gray-500 text-sm mt-2">{new Date(n.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                     </div>
@@ -673,7 +665,7 @@ function App() {
           <div className="space-y-6 pb-8">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Account</h2>
+              <PageHeader title="Settings" subtitle="Manage your account and preferences" />
               <div className="p-3 bg-white/60 rounded-lg mb-4"><p className="font-medium text-gray-700">{user?.email}</p></div>
               <div className="space-y-3">
                 <button onClick={() => setPage('about')} className="w-full py-3 bg-purple-100/80 text-purple-700 rounded-lg text-lg font-medium text-left px-4">ℹ️ About Memory Watch</button>
@@ -682,14 +674,14 @@ function App() {
             </div>
             <button onClick={doLogout} className="w-full py-4 bg-red-500 text-white rounded-lg text-lg font-bold">Sign Out</button>
             <div className="pt-4 border-t border-gray-300/50">
-              <button onClick={() => setShowDangerZone(!showDangerZone)} className="w-full py-2 text-gray-500 text-sm text-center">{showDangerZone ? '▲ Hide' : '▼ Account Removal'}</button>
+              <button onClick={() => setShowDangerZone(!showDangerZone)} className="w-full py-2 text-gray-600 text-sm text-center">{showDangerZone ? '▲ Hide' : '▼ Account Removal'}</button>
               {showDangerZone && (
                 <div className="mt-3 space-y-3">
                   {!showDeleteConfirm
                     ? <button onClick={() => setShowDeleteConfirm(true)} className="w-full py-3 bg-white/70 border border-red-300 text-red-400 rounded-lg text-sm">Delete Account</button>
                     : <div className="bg-red-50/90 border border-red-200 rounded-2xl p-6 space-y-4">
                         <h3 className="font-bold text-red-700 text-lg">⚠️ Are you sure?</h3>
-                        <p className="text-red-600 text-sm">This will permanently delete your account and all watchlist data. This cannot be undone.</p>
+                        <p className="text-red-600 text-base">This will permanently delete your account and all watchlist data. This cannot be undone.</p>
                         <button onClick={doDeleteAccount} className="w-full py-3 bg-red-600 text-white rounded-lg font-bold">Yes, Permanently Delete My Account</button>
                         <button onClick={() => { setShowDeleteConfirm(false); setShowDangerZone(false); }} className="w-full py-3 bg-white border border-gray-300 text-gray-600 rounded-lg font-medium">Cancel</button>
                       </div>
@@ -705,8 +697,8 @@ function App() {
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
               <BackButton onClick={() => setPage('settings')} />
-              <h2 className="text-2xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
-              <p className="text-purple-700 italic text-base leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
+              <h2 className="text-3xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
+              <p className="text-purple-700 italic text-lg leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
               <div className="space-y-4 text-gray-800 text-base leading-relaxed">
                 <p>Memory Watch was produced by three brains — mine, ChatGPT, and Claude (Anthropic). I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
                 <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memory Watch.</p>
@@ -734,7 +726,7 @@ function App() {
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
               <BackButton onClick={() => setPage('settings')} />
-              <h2 className="text-2xl font-bold mb-6 text-gray-800">Privacy Policy</h2>
+              <h2 className="text-3xl font-bold mb-2 text-gray-800">Privacy Policy</h2>
               <p className="text-gray-600 text-sm mb-6">Last updated: March 17, 2026</p>
               <div className="space-y-6 text-gray-800 text-base leading-relaxed">
                 <div><h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3><p>We collect only what is necessary: your email address, watchlist names, search queries, and anonymous usage data.</p></div>
