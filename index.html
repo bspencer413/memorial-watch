@@ -13,7 +13,7 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
+    * { -webkit-tap-highlight-color: transparent; font-family: Georgia, 'Times New Roman', serif; }
     html, body { height: 100%; overflow-x: hidden; }
   </style>
 </head>
@@ -25,7 +25,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.5b';
+const APP_VERSION = '1.0.5c';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -119,8 +119,10 @@ const PageWrapper = ({ children }) => (
     minHeight: '100dvh', width: '100%', position: 'relative',
     paddingTop: '1rem', paddingBottom: '5rem',
     backgroundImage: `url(${SUNSET_BG})`,
-    backgroundSize: 'cover', backgroundPosition: 'center top',
-    backgroundRepeat: 'no-repeat', backgroundAttachment: 'scroll',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center top',
+    backgroundRepeat: 'no-repeat',
+    backgroundAttachment: 'fixed',
   }}>
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.10)' }} />
     <div style={{ position: 'relative', zIndex: 10 }}>{children}</div>
@@ -337,7 +339,7 @@ function App() {
             </div>
           </div>
           {!isDisambig && profile.extract && <p className="text-purple-100 text-base leading-relaxed mb-4">{profile.extract.split('. ').slice(0, 3).join('. ') + '.'}</p>}
-          {isDisambig && <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-4"><p className="text-yellow-200 text-sm text-center">⚠️ Multiple people share this name — try adding a middle name or location</p></div>}
+          {isDisambig && <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-4"><p className="text-yellow-200 text-sm text-center">⚠️ Multiple people share this name — try a middle name or location</p></div>}
           {profile.deathDate && <div className="p-3 bg-gray-500/30 border border-gray-400/30 rounded-xl mb-4"><p className="text-gray-200 text-sm text-center">⚫ This person has passed away — no need to add to watchlist</p></div>}
           {showAddButton && (
             <div className="space-y-2 mb-3">
@@ -349,7 +351,7 @@ function App() {
             </div>
           )}
           <div className="p-3 bg-purple-600/20 border border-purple-500/20 rounded-xl">
-            <p className="text-purple-200 text-xs leading-relaxed">💜 Data provided by Wikipedia. Memory Watch donates a portion of revenues to the Wikimedia Foundation.</p>
+            <p className="text-purple-200 text-xs">💜 Data provided by Wikipedia. Memory Watch donates a portion of revenues to the Wikimedia Foundation.</p>
           </div>
         </div>
       </div>
@@ -412,7 +414,7 @@ function App() {
         justifyContent: 'center', alignItems: 'center',
         backgroundImage: `url(${SUNSET_BG})`,
         backgroundSize: 'cover', backgroundPosition: 'center center',
-        backgroundRepeat: 'no-repeat',
+        backgroundRepeat: 'no-repeat', backgroundAttachment: 'fixed',
       }}>
         <div className="w-full max-w-md mx-auto px-4">
           <div className="bg-black/45 backdrop-blur-sm rounded-3xl p-8 shadow-2xl space-y-4 border border-white/10">
@@ -462,19 +464,11 @@ function App() {
               border: '1px solid rgba(255,255,255,0.2)',
             }}>
               <div className="p-8 text-center">
-                <h1 className="text-white font-black tracking-wide mb-2 drop-shadow-lg" style={{fontSize:'clamp(2rem,5vw,3.5rem)'}}>
-                  Memory Watch
-                </h1>
-                <p className="text-purple-200 font-semibold mb-1" style={{fontSize:'clamp(0.9rem,2vw,1.2rem)'}}>
-                  Memorial Alerts
-                </p>
+                <h1 className="text-white font-black tracking-wide mb-2 drop-shadow-lg" style={{fontSize:'clamp(2rem,5vw,3.5rem)'}}>Memory Watch</h1>
+                <p className="text-purple-200 font-semibold mb-1" style={{fontSize:'clamp(0.9rem,2vw,1.2rem)'}}>Memorial Alerts</p>
                 <div className="w-16 h-0.5 bg-purple-300/50 mx-auto my-3" />
-                <p className="text-white/90 mb-1" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>
-                  Welcome, {user?.name}! 👋
-                </p>
-                <p className="text-purple-200" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>
-                  Monitoring <span className="font-bold text-white">{watchlist.length}</span> people
-                </p>
+                <p className="text-white/90 mb-1" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Welcome, {user?.name}! 👋</p>
+                <p className="text-purple-200" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Monitoring <span className="font-bold text-white">{watchlist.length}</span> people</p>
               </div>
             </div>
             <div className="rounded-2xl px-6 py-4 text-center" style={{
@@ -499,11 +493,7 @@ function App() {
               <button onClick={() => setPage('watchlist')}
                 className="rounded-2xl p-6 text-left shadow-xl relative transition-transform active:scale-95"
                 style={{ background: 'rgba(255,255,255,0.22)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.35)' }}>
-                {unreadCount > 0 && (
-                  <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
+                {unreadCount > 0 && <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">{unreadCount > 9 ? '9+' : unreadCount}</span>}
                 <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg" style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
                   <HeartIcon />
                 </div>
@@ -742,7 +732,6 @@ function App() {
 
       </div>
 
-      {/* TOOLBAR — solid and visible */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         backgroundColor: 'rgba(255,255,255,0.95)',
