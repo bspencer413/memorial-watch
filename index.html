@@ -715,8 +715,8 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <BackButton onClick={() => setPage('settings')} />
-              <h2 className="text-3xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
+              <BackButton onClick={() => setPage('home')} />
+              <h2 className="text-5xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
               <p className="text-purple-700 italic text-lg leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
               <div className="space-y-4 text-gray-800 text-base leading-relaxed">
                 <p>Memory Watch was produced by three brains — mine, ChatGPT, and Claude (Anthropic). I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
@@ -735,7 +735,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <BackButton onClick={() => setPage('settings')} />
+              <BackButton onClick={() => setPage('home')} />
             </div>
           </div>
         )}
@@ -744,7 +744,7 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <BackButton onClick={() => setPage('settings')} />
+              <BackButton onClick={() => setPage('home')} />
               <h2 className="text-3xl font-bold mb-2 text-gray-800">Privacy Policy</h2>
               <p className="text-gray-600 text-sm mb-6">Last updated: March 17, 2026</p>
               <div className="space-y-6 text-gray-800 text-base leading-relaxed">
