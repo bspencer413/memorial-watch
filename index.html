@@ -28,7 +28,8 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     * { -webkit-tap-highlight-color: transparent; font-family: Georgia, 'Times New Roman', serif; }
-    html, body { height: 100%; overflow-x: hidden; }
+    html, body { height: 100%; overflow-x: hidden; background-color: #1e1b4b; }
+ }
   </style>
 </head>
 <body style="margin:0;padding:0;">
@@ -486,7 +487,7 @@ function App() {
 
   return (
     <PageWrapper>
-      <div className="w-full max-w-6xl mx-auto p-4">
+      <div className="w-full max-w-3xl mx-auto p-4">
         {page === 'home' && (
           <div className="space-y-6">
             <div className="rounded-3xl overflow-hidden shadow-2xl" style={{
@@ -713,7 +714,7 @@ function App() {
         {page === 'about' && (
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
-            <div className={cardClass}>
+            <div className={cardClass + " max-w-5xl mx-auto"}>
               <BackButton onClick={() => setPage('home')} />
               <h2 className="text-5xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
               <p className="text-purple-700 italic text-lg leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
