@@ -30,7 +30,6 @@
   <style>
     * { -webkit-tap-highlight-color: transparent; font-family: Georgia, 'Times New Roman', serif; }
     html, body { height: 100%; overflow-x: hidden; background-color: #1e1b4b; }
- }
   </style>
 </head>
 <body style="margin:0;padding:0;">
@@ -41,7 +40,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.5f';
+const APP_VERSION = '1.0.6';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -117,10 +116,6 @@ const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type
   </div>
 );
 
-const BackButton = ({ onClick }) => (
-  <button onClick={onClick} className="text-purple-500 flex items-center gap-1 text-sm py-2 mb-2">← Back to Settings</button>
-);
-
 const MWLogo = ({ onHome }) => (
   <button onClick={onHome} className="flex items-center gap-2 mb-4">
     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-md">
@@ -136,10 +131,6 @@ const PageWrapper = ({ children }) => (
     paddingTop: '1rem', paddingBottom: '5rem',
     backgroundImage: `url(${SUNSET_BG})`,
     backgroundSize: 'cover',
-    backgroundPosition: 'center center',
-    backgroundAttachment: 'scroll',
-    minHeight: '100%',
-
     backgroundPosition: 'center top',
     backgroundRepeat: 'no-repeat',
     backgroundAttachment: 'scroll',
@@ -162,7 +153,6 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
   return hasDeathInBrackets || hasYearsInDescription || isPastTense || diedInExtract || diedInDescription;
 }
-
 
 function App() {
   const [page, setPage] = useState('home');
@@ -195,6 +185,18 @@ function App() {
     const t = localStorage.getItem('token');
     const u = localStorage.getItem('user');
     if (t && u) { setUser(JSON.parse(u)); setAuth(true); setPage('home'); loadWatchlist(); loadNotifications(); }
+
+    // iPad Safari freeze fix — reset inputs when returning to app
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setTimeout(() => {
+          const inputs = document.querySelectorAll('input');
+          inputs.forEach(input => { input.blur(); });
+        }, 100);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const loadWatchlist = async () => {
@@ -270,8 +272,7 @@ function App() {
 
   const checkWatch = async () => {
     const name = toTitleCase(nw.name);
-    if (!name.trim()) return;
-    if (name.trim().split(' ').filter(p => p.length > 0).length < 2) { alert('Please enter a first and last name.'); return; }
+    if (!name.trim() || name.trim().length < 2) { alert('Please enter a name to search.'); return; }
     if (isOnWatchlist(name)) { alert(`${name} is already on your watchlist!`); return; }
     setWatchlistChecking(true); setWatchlistCheck(null); setWatchlistChecked(false);
     try { const profile = await fetchWikiProfile(name); setWatchlistCheck({ profile, name }); setWatchlistChecked(true); }
@@ -319,8 +320,7 @@ function App() {
   };
 
   const doSearch = async () => {
-    if (!sName.trim()) return;
-    if (sName.trim().split(' ').filter(p => p.length > 0).length < 2) { alert('Please enter a first and last name.'); return; }
+    if (!sName.trim() || sName.trim().length < 2) { alert('Please enter a name to search.'); return; }
     setLoading(true); setWikiProfile(null); setResults([]); setSearched(false);
     try {
       const token = localStorage.getItem('token');
@@ -346,11 +346,10 @@ function App() {
     border: '1px solid rgba(255,255,255,0.35)'
   };
 
-  // Consistent page header component
   const PageHeader = ({ title, subtitle }) => (
     <div className="text-center mb-6">
-      <h2 className="text-3xl font-bold text-gray-800">{title}</h2>
-      <p className="text-lg text-gray-700 mt-2">{subtitle}</p>
+      <h2 className="text-3xl font-bold text-white drop-shadow">{title}</h2>
+      {subtitle && <p className="text-lg text-white/80 mt-2">{subtitle}</p>}
     </div>
   );
 
@@ -455,7 +454,7 @@ function App() {
             <div className="text-center mb-2">
               <h1 className="text-white text-4xl font-black tracking-wide">Memory Watch</h1>
               <p className="text-purple-300 text-lg mt-2 italic">Discover people you miss. Find out if they're still with us.</p>
-              <p className="text-white/60 text-sm mt-2">🎁 Free during beta — early users keep free access forever</p>
+              <p className="text-white/60 text-sm mt-2">🎁 Free during beta</p>
             </div>
             <input type="email" placeholder="Email address" value={email}
               onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth()}
@@ -468,7 +467,7 @@ function App() {
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
-            {backendWaking && <p className="text-white/60 text-xs text-center animate-pulse">⏳ Waking up the server... this may take 30 seconds...</p>}
+            {backendWaking && <p className="text-white/60 text-xs text-center animate-pulse">⏳ Waking up the server...</p>}
             <div className="grid grid-cols-2 gap-3">
               <button onClick={() => { setMode('login'); doAuth(); }} disabled={loading}
                 className="py-4 bg-purple-500 hover:bg-purple-600 text-white font-bold rounded-xl disabled:opacity-50 text-xl">
@@ -489,6 +488,7 @@ function App() {
   return (
     <PageWrapper>
       <div className="w-full max-w-3xl mx-auto p-4">
+
         {page === 'home' && (
           <div className="space-y-6">
             <div className="rounded-3xl overflow-hidden shadow-2xl" style={{
@@ -514,31 +514,23 @@ function App() {
               </p>
             </div>
             <div className="grid grid-cols-2 gap-5 items-stretch">
-              <button onClick={() => setPage('search')}
-                className="rounded-2xl p-6 text-left shadow-xl transition-transform active:scale-95 w-full flex flex-col"
-                style={homeCardStyle}>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg flex-shrink-0"
-                  style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
+              <button onClick={() => setPage('search')} className="rounded-2xl p-6 text-left shadow-xl transition-transform active:scale-95 w-full flex flex-col" style={homeCardStyle}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg flex-shrink-0" style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
                   <SearchIcon />
                 </div>
                 <h3 className="font-bold text-white drop-shadow mb-2" style={{fontSize:'clamp(1.1rem,2.5vw,1.4rem)'}}>Search</h3>
                 <p className="text-white/80 leading-snug" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Look up anyone by name — find out if they are still with us</p>
               </button>
-              <button onClick={() => setPage('watchlist')}
-                className="rounded-2xl p-6 text-left shadow-xl relative transition-transform active:scale-95 w-full flex flex-col"
-                style={homeCardStyle}>
+              <button onClick={() => setPage('watchlist')} className="rounded-2xl p-6 text-left shadow-xl relative transition-transform active:scale-95 w-full flex flex-col" style={homeCardStyle}>
                 {unreadCount > 0 && <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">{unreadCount > 9 ? '9+' : unreadCount}</span>}
-                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg flex-shrink-0"
-                  style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4 shadow-lg flex-shrink-0" style={{background: 'linear-gradient(135deg, #7c3aed, #db2777)'}}>
                   <HeartIcon />
                 </div>
                 <h3 className="font-bold text-white drop-shadow mb-2" style={{fontSize:'clamp(1.1rem,2.5vw,1.4rem)'}}>Watchlist</h3>
                 <p className="text-white/80 leading-snug" style={{fontSize:'clamp(0.85rem,1.8vw,1rem)'}}>Save names to monitor — get notified when their status changes</p>
               </button>
             </div>
-            <button onClick={() => setPage('about')}
-              className="w-full rounded-2xl px-6 py-4 text-left shadow-xl transition-transform active:scale-95"
-              style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.55) 0%, rgba(147,51,234,0.45) 100%)', backdropFilter: 'blur(6px)', border: '1px solid rgba(167,139,250,0.4)' }}>
+            <button onClick={() => setPage('about')} className="w-full rounded-2xl px-6 py-4 text-left shadow-xl transition-transform active:scale-95" style={{ background: 'linear-gradient(135deg, rgba(109,40,217,0.55) 0%, rgba(147,51,234,0.45) 100%)', backdropFilter: 'blur(6px)', border: '1px solid rgba(167,139,250,0.4)' }}>
               <p className="text-white font-bold text-base">ℹ️ About Memory Watch</p>
               <p className="text-purple-200 text-sm mt-1">Three brains. One mission. Read the story →</p>
             </button>
@@ -552,8 +544,8 @@ function App() {
               <PageHeader title="Watchlist" subtitle="Add a new person to monitor — we'll notify you if a memorial notice is published" />
               {!watchlistChecked ? (
                 <div className="space-y-4">
-                  <ClearableInput value={nw.name} onChange={(e) => setNw({...nw, name: e.target.value})} onBlur={(e) => setNw({...nw, name: toTitleCase(e.target.value)})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Full Name (First and Last)" inputClass={iClass} />
-                  <ClearableInput value={nw.location} onChange={(e) => setNw({...nw, location: e.target.value})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location (optional)" inputClass={iClass} />
+                  <ClearableInput value={nw.name} onChange={(e) => setNw({...nw, name: e.target.value})} onBlur={(e) => setNw({...nw, name: toTitleCase(e.target.value)})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Full Name" inputClass={iClass} />
+                  <ClearableInput value={nw.location} onChange={(e) => setNw({...nw, location: e.target.value})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="City and/or State (optional)" inputClass={iClass} />
                   <ClearableInput value={nw.birthYear} onChange={(e) => setNw({...nw, birthYear: e.target.value.replace(/\D/g, '').slice(0, 4)})} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year (optional, e.g. 1952)" maxLength={4} inputClass={iClass} />
                   <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
                     <SearchIcon /> {watchlistChecking ? 'Checking...' : 'Check Name'}
@@ -562,9 +554,9 @@ function App() {
               ) : <WatchlistCheckCard />}
             </div>
             <div className={cardClass}>
-              <h2 className="text-2xl font-bold mb-2 text-gray-800">Your Watchlist ({watchlist.length})</h2>
-              <p className="text-lg text-gray-700 mb-4">People you are currently monitoring</p>
-              {watchlist.length === 0 ? <p className="text-gray-600 text-center py-8">No one on your watchlist yet</p> : (
+              <h2 className="text-2xl font-bold mb-2 text-white drop-shadow">Your Watchlist ({watchlist.length})</h2>
+              <p className="text-lg text-white/80 mb-4">People you are currently monitoring</p>
+              {watchlist.length === 0 ? <p className="text-white/60 text-center py-8">No one on your watchlist yet</p> : (
                 <div className="space-y-3">
                   {watchlist.map(w => (
                     <div key={w.id} className="p-4 bg-white/60 rounded-lg">
@@ -584,7 +576,9 @@ function App() {
                       ) : (
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg text-gray-800">{w.name}</h3>
+                            <button onClick={() => { setSName(w.name); setPage('search'); }} className="text-left w-full">
+                              <h3 className="font-semibold text-lg text-gray-800 hover:text-purple-700">{w.name}</h3>
+                            </button>
                             <div className="text-sm text-gray-600">{w.location && <span>{w.location}</span>}{w.dob && <span> • Born: {w.dob}</span>}</div>
                             <div className="flex items-center gap-1 mt-1"><CheckIcon /><span className="text-xs text-green-600">Active</span></div>
                           </div>
@@ -608,8 +602,8 @@ function App() {
             <div className={cardClass}>
               <PageHeader title="Search" subtitle="Look up anyone by name to find out if they are still with us" />
               <div className="space-y-4">
-                <ClearableInput value={sName} onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); setSearched(false); }} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Full Name (First and Last)" inputClass={iClass} />
-                <ClearableInput value={sLoc} onChange={(e) => setSLoc(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Location (optional)" inputClass={iClass} />
+                <ClearableInput value={sName} onChange={(e) => { setSName(e.target.value); setWikiProfile(null); setResults([]); setSearched(false); }} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Name (first, last, or full)" inputClass={iClass} />
+                <ClearableInput value={sLoc} onChange={(e) => setSLoc(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="City and/or State (optional)" inputClass={iClass} />
                 <ClearableInput value={sBirthYear} onChange={(e) => setSBirthYear(e.target.value.replace(/\D/g, '').slice(0, 4))} onKeyPress={(e) => e.key === 'Enter' && doSearch()} placeholder="Birth Year (optional, e.g. 1952)" maxLength={4} inputClass={iClass} />
                 <button onClick={doSearch} disabled={loading} className="w-full py-4 bg-purple-500 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-lg font-bold">
                   <SearchIcon /> {loading ? 'Searching...' : 'Search'}
@@ -620,14 +614,14 @@ function App() {
             {!loading && searched && !wikiProfile && results.length === 0 && (
               <div className={cardClass + " text-center"}>
                 <p className="text-4xl mb-3">🔍</p>
-                <h3 className="font-bold text-gray-800 text-xl mb-2">No results found for "{sName}"</h3>
-                <p className="text-gray-700 text-base">Try checking the spelling, adding a middle name, or a different variation.</p>
+                <h3 className="font-bold text-white text-xl mb-2">No results found for "{sName}"</h3>
+                <p className="text-white/80 text-base">Try checking the spelling, adding a middle name, or a different variation.</p>
               </div>
             )}
             {results.length > 0 && (
               <div className={cardClass}>
-                <h2 className="text-2xl font-bold mb-2 text-gray-800">Obituary Records ({results.length})</h2>
-                <p className="text-lg text-gray-700 mb-4">Records found in our Legacy database</p>
+                <h2 className="text-2xl font-bold mb-2 text-white drop-shadow">Obituary Records ({results.length})</h2>
+                <p className="text-lg text-white/80 mb-4">Records found in our Legacy database</p>
                 <div className="space-y-3">
                   {results.map(r => (
                     <div key={r.id} className="p-4 border rounded-lg bg-white/60">
@@ -639,9 +633,9 @@ function App() {
                         {r.age && <p>Age: {r.age}</p>}
                         <p>Location: {r.location || 'Unknown'}</p>
                         <p>Date: {r.date || 'Unknown'}</p>
-                        <p>Source: {r.source}</p>
                       </div>
                       {r.obit_text && <p className="text-base text-gray-700 mt-3 leading-relaxed border-t pt-3">{r.obit_text.slice(0, 300)}{r.obit_text.length > 300 ? '...' : ''}</p>}
+                      {r.link && <a href={r.link} target="_blank" rel="noopener noreferrer" className="text-purple-600 text-sm mt-2 block">Read full obituary →</a>}
                     </div>
                   ))}
                 </div>
@@ -658,8 +652,8 @@ function App() {
               {notifications.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-5xl mb-4">🔔</p>
-                  <p className="text-gray-800 font-bold text-xl">No alerts yet</p>
-                  <p className="text-gray-700 text-lg mt-2">We'll notify you here when someone on your watchlist passes away</p>
+                  <p className="text-white font-bold text-xl">No alerts yet</p>
+                  <p className="text-white/80 text-lg mt-2">We'll notify you here when someone on your watchlist passes away</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -716,27 +710,25 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass + " max-w-5xl mx-auto"}>
-              <BackButton onClick={() => setPage('home')} />
-              <h2 className="text-5xl font-bold mb-2 text-gray-800">About Memory Watch</h2>
-              <p className="text-purple-700 italic text-lg leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
-              <div className="space-y-4 text-gray-800 text-base leading-relaxed">
-                <p>Memory Watch was produced by three brains — mine, ChatGPT, and Claude (Anthropic). I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech. I've owned just about every Apple product that has come out since the Apple II. I love the evolution of search tools and have become enamored with AI and how to use it for useful things. 23andMe, I'm in. Ancestry, I'm in. AI, count me ecstatic and in.</p>
-                <p>As I get older, traditional search engines have become really frustrating, so I find asking AI to be much more effective. However, one thing you cannot do until now is to have a "watchlist" of some kind that can alert you to events that are important to you. In my case I found it very hard, using existing tools, to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memory Watch.</p>
-                <p>We have partnered with Legacy, the largest obituary platform in the United States, covering more than 70% of all U.S. deaths through partnerships with thousands of newspapers and funeral homes nationwide. Memory Watch monitors Legacy continuously, so when someone on your watchlist passes away, you'll know.</p>
-                <p>Memory Watch is also partnered with Wikipedia which provides biography information on famous or notable people. The intelligent search and detection system powering our ALIVE/DECEASED engine was developed with Claude by Anthropic. A portion of proceeds will be donated to Wikipedia to help assure their continued great service.</p>
-                <p>Finally, we want to make this the most usable and helpful way to keep track of people that matter to you. If you have any thoughts on how to improve Memory Watch, please contact us with your suggestions.</p>
+              <h2 className="text-3xl font-bold mb-2 text-white drop-shadow">About Memory Watch</h2>
+              <p className="text-purple-200 italic text-lg leading-relaxed mb-6">Three brains. One mission. Memory Watch.</p>
+              <div className="space-y-4 text-white/90 text-base leading-relaxed">
+                <p>Memory Watch was produced by three brains — mine, ChatGPT, and Claude (Anthropic). I'm a retired 74 year old former high-tech entrepreneur and early adopter of new tech.</p>
+                <p>As I get older, traditional search engines have become really frustrating. I find asking AI to be much more effective. One thing you couldn't do until now is have a watchlist that alerts you when something important happens. I found it very hard to find out if former friends, classmates, colleagues and even famous figures were dead or alive. Hence, Memory Watch.</p>
+                <p>We partner with Legacy, the largest obituary platform in the United States, covering more than 70% of all U.S. deaths. Memory Watch monitors Legacy continuously — when someone on your watchlist passes away, you'll know.</p>
+                <p>We also partner with Wikipedia for biographical information on notable people. A portion of proceeds will be donated to Wikipedia.</p>
+                <p>If you have thoughts on how to improve Memory Watch, please reach out!</p>
               </div>
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-white/20">
                 <div className="flex items-center gap-4">
                   <img src={BILL_PHOTO} alt="Bill Spencer" className="w-20 h-20 rounded-full object-cover border-2 border-purple-400 shadow-lg" />
                   <div>
-                    <p className="font-bold text-gray-800 text-lg">Bill Spencer</p>
-                    <p className="text-purple-600 italic">Idea Hamster 🐹</p>
-                    <a href="mailto:bspencer413@me.com" className="text-purple-600 text-sm mt-1 block">bspencer413@me.com</a>
+                    <p className="font-bold text-white text-lg">Bill Spencer</p>
+                    <p className="text-purple-300 italic">Idea Hamster 🐹</p>
+                    <a href="mailto:bspencer413@me.com" className="text-purple-300 text-sm mt-1 block">bspencer413@me.com</a>
                   </div>
                 </div>
               </div>
-              <BackButton onClick={() => setPage('home')} />
             </div>
           </div>
         )}
@@ -745,20 +737,18 @@ function App() {
           <div className="space-y-6">
             <MWLogo onHome={() => setPage('home')} />
             <div className={cardClass}>
-              <BackButton onClick={() => setPage('home')} />
-              <h2 className="text-3xl font-bold mb-2 text-gray-800">Privacy Policy</h2>
-              <p className="text-gray-600 text-sm mb-6">Last updated: March 17, 2026</p>
-              <div className="space-y-6 text-gray-800 text-base leading-relaxed">
-                <div><h3 className="font-bold text-gray-900 mb-2">1. Information We Collect</h3><p>We collect only what is necessary: your email address, watchlist names, search queries, and anonymous usage data.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">2. How We Use Your Information</h3><p>We do not sell your personal information. Ever.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">3. Data Sources</h3><p>Search results are powered by Legacy obituary feeds and Wikipedia.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">4. Data Storage</h3><p>Your data is stored securely on Render.com servers in the United States with industry-standard encryption.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">5. Your Rights</h3><p>You may delete your account and all data from Settings at any time.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">6. Children's Privacy</h3><p>This service is not directed at children under 13.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">7. Third Party Services</h3><p>We use Render.com for hosting, Vercel for frontend delivery, Legacy for obituary data, and Wikipedia API for biographical data.</p></div>
-                <div><h3 className="font-bold text-gray-900 mb-2">8. Contact</h3><a href="mailto:bspencer413@me.com" className="text-purple-600">bspencer413@me.com</a></div>
+              <h2 className="text-3xl font-bold mb-2 text-white drop-shadow">Privacy Policy</h2>
+              <p className="text-white/60 text-sm mb-6">Last updated: March 17, 2026</p>
+              <div className="space-y-6 text-white/90 text-base leading-relaxed">
+                <div><h3 className="font-bold text-white mb-2">1. Information We Collect</h3><p>We collect only what is necessary: your email address, watchlist names, search queries, and anonymous usage data.</p></div>
+                <div><h3 className="font-bold text-white mb-2">2. How We Use Your Information</h3><p>We do not sell your personal information. Ever.</p></div>
+                <div><h3 className="font-bold text-white mb-2">3. Data Sources</h3><p>Search results are powered by Legacy obituary feeds and Wikipedia.</p></div>
+                <div><h3 className="font-bold text-white mb-2">4. Data Storage</h3><p>Your data is stored securely on Render.com servers in the United States with industry-standard encryption.</p></div>
+                <div><h3 className="font-bold text-white mb-2">5. Your Rights</h3><p>You may delete your account and all data from Settings at any time.</p></div>
+                <div><h3 className="font-bold text-white mb-2">6. Children's Privacy</h3><p>This service is not directed at children under 13.</p></div>
+                <div><h3 className="font-bold text-white mb-2">7. Third Party Services</h3><p>We use Render.com for hosting, Vercel for frontend delivery, Legacy for obituary data, and Wikipedia API for biographical data.</p></div>
+                <div><h3 className="font-bold text-white mb-2">8. Contact</h3><a href="mailto:bspencer413@me.com" className="text-purple-300">bspencer413@me.com</a></div>
               </div>
-              <BackButton onClick={() => setPage('settings')} />
             </div>
           </div>
         )}
