@@ -51,7 +51,7 @@ const { useState, useEffect } = React;
 const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const SUNSET_BG = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Sunset.jpeg';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/Bspencer413/Memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.7';
+const APP_VERSION = '1.0.8';
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -155,8 +155,8 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   if (type === 'disambiguation') return false;
   if (deathDate) return true;
   const firstSentence = extract.split('.')[0];
-  const hasDeathInBrackets = /\(\d{4}\s*[-]+\s*\d{4}\)/.test(firstSentence);
-  const hasYearsInDescription = /\(\d{4}\s*[-]+\s*\d{4}\)/.test(description);
+  const hasDeathInBrackets = /\(\d{4}\s*[-\u2013\u2014]+\s*\d{4}\)/.test(firstSentence);
+  const hasYearsInDescription = /\(\d{4}\s*[-\u2013\u2014]+\s*\d{4}\)/.test(description);
   const hasBornOnly = /\([^)]*born\s+\w+\s+\d+,\s+\d{4}\)/.test(firstSentence);
   if (hasBornOnly && !hasDeathInBrackets && !hasYearsInDescription) return false;
   const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description);
