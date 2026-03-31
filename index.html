@@ -1618,8 +1618,14 @@ return (
       <div className="space-y-4 pb-8" style={{ paddingTop: '1rem' }}>
 
         {/* Bill's message */}
-        <div className={cardClass}>
-          <CardPageHeader title="About Memory Watch" onHome={() => { clearWatchlistCheck(); setPage('search'); }} hideHome={false} />
+        <div className={cardClass + ' relative'}>
+          <div className="mb-3 pb-2 border-b border-purple-900/30 text-center">
+            <h2 className="text-4xl font-black text-white tracking-wide">About</h2>
+            <h2 className="text-4xl font-black text-white tracking-wide">Memory Watch</h2>
+            <button onClick={() => { clearWatchlistCheck(); setPage('search'); }} className="absolute right-3 top-3 flex flex-col items-center text-white hover:text-purple-400 transition-colors">
+              <SearchIcon /><span className="text-sm">Search</span>
+            </button>
+          </div>
           <p className="text-purple-300 italic text-xl text-center mb-3">v{APP_VERSION}</p>
           <div className="flex items-center gap-4 mb-4">
             <img src={BILL_PHOTO} alt="Bill Spencer" className="w-14 h-14 rounded-full object-cover border-2 border-purple-600 shadow-lg shrink-0" />
@@ -1629,7 +1635,7 @@ return (
               <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl mt-1 block">hello@memorywatch.app</a>
             </div>
           </div>
-          <p className="text-purple-200 text-2xl font-bold italic mb-3">I wonder what happened to…</p>
+          <p className="text-purple-200 text-2xl font-bold italic mb-3">Whatever happened to…</p>
           <div className="space-y-3 text-gray-200 text-xl leading-relaxed">
             <p>As I get older, I look at the obituaries and wonder about old friends. Did they make it? Are they still out there? "Google it!", they say. They don't know my eyes and fingers.</p>
             <p>So I built Memory Watch to help you find out whatever happened to long-lost friends, family and even notable people.</p>
@@ -1643,7 +1649,7 @@ return (
           <div className="space-y-4">
             <div className="flex gap-3 items-start">
               <span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span>
-              <div><p className="text-white text-xl font-semibold">Search</p><p className="text-gray-300 text-xl">Type a name to find out if someone has passed. We search Wikipedia and official government records.</p></div>
+              <div><p className="text-white text-xl font-semibold">Search</p><p className="text-gray-300 text-xl">Type a name to find out if someone has passed. We search Wikipedia and the SSDI, which is current through 2014.</p></div>
             </div>
             <div className="flex gap-3 items-start">
               <span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span>
@@ -1665,6 +1671,7 @@ return (
             <p><strong className="text-white">How We Use It:</strong> We do not sell your personal information. Ever.</p>
             <p><strong className="text-white">Data Sources:</strong> Search results are powered by Wikipedia and the Social Security Death Index.</p>
             <p><strong className="text-white">Your Rights:</strong> You may delete your account and all data at any time.</p>
+            <p><strong className="text-white">Minor Protection:</strong> Memory Watch is not intended for searching individuals under 18 years of age.</p>
             <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl">hello@memorywatch.app</a>
           </div>
         </div>
