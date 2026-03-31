@@ -358,12 +358,13 @@ if (wItem) { openWatchlistDrawer(wItem); }
 else { openWatchlistDrawer({ name: n.name, id: n.watchlist_id }); }
 };
 
-const doAuth = async () => {
+// ── FIX: doAuth(authMode) — mode passed directly, eliminates React state race ──
+const doAuth = async (authMode) => {
 if (!email || !password) return;
 setLoading(true); setBackendWaking(false);
 const wakeTimer = setTimeout(() => setBackendWaking(true), 3000);
 try {
-const endpoint = mode === 'login' ? 'login' : 'register';
+const endpoint = authMode === 'register' ? 'register' : 'login';
 const r = await fetch(API_BASE + '/auth/' + endpoint, {
 method: 'POST', headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ email, password })
@@ -799,27 +800,6 @@ await loadWatchlist();
 } catch (error) { alert('Error: ' + error.message); }
 };
 
-const doSearch = async () => {
-if (!sName.trim() || sName.trim().length < 2) { alert('Please enter a name to search.'); return; }
-setLoading(true); setWikiProfile(null); setResults([]); setSearched(false);
-try {
-const token = localStorage.getItem('token');
-try {
-const r = await fetch(API_BASE + '/search', {
-method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-body: JSON.stringify({ name: toTitleCase(sName), location: sLoc || undefined, birth_year: sBirthYear || undefined })
-});
-if (r.ok) { const data = await r.json(); if (Array.isArray(data)) setResults(data); }
-} catch (legacyErr) { console.log('Legacy search error:', legacyErr); }
-try {
-const profile = await fetchWikiProfile(sName);
-if (profile) setWikiProfile(profile);
-} catch (wikiErr) { console.log('Wiki search error:', wikiErr); }
-setSearched(true);
-} catch (error) { setSearched(true); }
-finally { setLoading(false); }
-};
-
 const unreadCount = notifications.length;
 const iClass = "w-full px-4 py-4 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
 const cardClass = "bg-black/35 rounded-2xl p-4 shadow-lg border border-purple-900/30 backdrop-blur-sm";
@@ -918,7 +898,6 @@ return this.props.children;
 }
 }
 
-// ── SSDI mini drawer ────────────────────────────────────────────────────────
 const SsdiRecordDrawer = () => {
 if (!ssdiDrawer) return null;
 const r = ssdiDrawer;
@@ -997,7 +976,6 @@ return (
 );
 };
 
-// ── SSDI Results block ──────────────────────────────────────────────────────
 const SSIDResultsBlock = ({ ssdiResults, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix, apiHasMore, onLoadMore, birthYearFallback, middleFallback }) => {
 if (!ssdiResults || ssdiResults.length === 0) return null;
 const tooMany = ssdiResults.length >= 10 && !searchMiddle && !searchBirthYear;
@@ -1054,7 +1032,6 @@ return (
 );
 };
 
-// ── WatchlistCheckCard ──────────────────────────────────────────────────────
 const WatchlistCheckCard = () => {
 if (!watchlistCheck) return null;
 const { profile: rawProfile, name, ssdiResults: rawSsdi } = watchlistCheck;
@@ -1297,7 +1274,6 @@ return (
 
 };
 
-// ── Watchlist / Memories drawer ─────────────────────────────────────────────
 const WikiDrawer = () => {
 if (!drawerData) return null;
 const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear } = drawerData;
@@ -1442,15 +1418,15 @@ return (
 <div className="text-center">
 <p className="text-white/50 text-xl mt-1">Free during beta</p>
 </div>
-<input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth()} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
+<input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
 <div className="relative">
-<input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth()} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
+<input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
 <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60">{showPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
 </div>
 {backendWaking && <p className="text-white/60 text-xl text-center animate-pulse">Waking up the server…</p>}
 <div className="grid grid-cols-2 gap-3">
-<button onClick={() => { setMode('login'); doAuth(); }} disabled={loading} className="py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl disabled:opacity-50 text-2xl">{loading && mode === 'login' ? '…' : 'Sign In'}</button>
-<button onClick={() => { setMode('register'); doAuth(); }} disabled={loading} className="py-4 bg-purple-900/60 hover:bg-purple-800/80 text-white font-bold rounded-xl disabled:opacity-50 text-2xl border border-purple-400/60">{loading && mode === 'register' ? '…' : 'Register'}</button>
+<button onClick={() => doAuth('login')} disabled={loading} className="py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl disabled:opacity-50 text-2xl">{loading ? '…' : 'Sign In'}</button>
+<button onClick={() => doAuth('register')} disabled={loading} className="py-4 bg-purple-900/60 hover:bg-purple-800/80 text-white font-bold rounded-xl disabled:opacity-50 text-2xl border border-purple-400/60">{loading ? '…' : 'Register'}</button>
 </div>
 <p className="text-white/40 text-xl text-center">You'll stay signed in automatically</p>
 </div>
@@ -1619,8 +1595,6 @@ return (
 
     {page === 'about' && (
       <div className="space-y-4 pb-8" style={{ paddingTop: '1rem' }}>
-
-        {/* Bill's message */}
         <div className={cardClass + ' relative'}>
           <div className="mb-3 pb-2 border-b border-purple-900/30 text-center">
             <h2 className="text-4xl font-black text-white tracking-wide">About</h2>
@@ -1646,7 +1620,6 @@ return (
           </div>
         </div>
 
-        {/* How it works */}
         <div className={cardClass}>
           <h3 className="text-white text-2xl font-bold mb-4 text-center">How it works</h3>
           <div className="space-y-4">
@@ -1665,7 +1638,6 @@ return (
           </div>
         </div>
 
-        {/* Privacy policy */}
         <div className={cardClass}>
           <h3 className="font-bold text-white mb-1 text-2xl">Privacy Policy</h3>
           <p className="text-gray-400 text-xl mb-3">Last updated: March 2026</p>
@@ -1679,7 +1651,6 @@ return (
           </div>
         </div>
 
-        {/* Sign out + account removal — no card */}
         <div className="px-1 space-y-3 pb-2">
           <div className="p-3 bg-black/30 rounded-xl"><p className="font-medium text-gray-200 text-xl text-center">{user && user.email}</p></div>
           <button onClick={doLogout} className="w-full py-4 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-2xl font-bold">Sign Out</button>
@@ -1705,7 +1676,6 @@ return (
 
   </div>
 
-  {/* Bottom Nav */}}
   <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(5,0,15,0.95)', backdropFilter: 'blur(8px)', borderTop: '1px solid #4C1D95', padding: '0.5rem 1rem', paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
     <div className="flex justify-around max-w-sm mx-auto">
       <button onClick={() => { clearWatchlistCheck(); setPage('search'); }} className={'flex flex-col items-center gap-0.5 px-1 py-1 ' + (page === 'search' ? 'text-purple-400' : 'text-gray-400')}>
