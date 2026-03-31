@@ -1533,7 +1533,7 @@ return (
         </div>
         <div className={cardClass}>
           <div className="mb-1 pb-1 border-b border-purple-900/30 text-center">
-            <p className="text-purple-300 text-4xl font-bold italic whitespace-nowrap">Whatever happened to...</p>
+            <p className="text-purple-300 font-bold italic" style={{ fontSize: isPhone ? "1.35rem" : "2rem", whiteSpace: "nowrap" }}>Whatever happened to...</p>
           </div>
           {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
           {!watchlistChecked ? (
