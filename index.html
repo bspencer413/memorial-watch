@@ -1436,7 +1436,7 @@ return (
 <div style={{ width: '100%', maxWidth: '100%', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-900/40 space-y-3">
 <div className="text-center">
-<img src={MW_LOGO} alt="Memory Watch" style={{ width: '120px', height: 'auto', margin: '0 auto 0.5rem' }} />
+<img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '120px', height: 'auto', margin: '0 auto 0.5rem' }} />
 <p className="text-white text-2xl font-bold tracking-wide">Memory Watch</p>
 <p className="text-white/50 text-xl mt-1">Free during beta</p>
 </div>
@@ -1528,14 +1528,12 @@ return (
 
     {page === 'search' && (
       <div className="space-y-3" style={{ paddingTop: PT }}>
-        <div className="flex flex-col items-center justify-end" style={{ height: PT, marginTop: '-' + PT, paddingBottom: '0.75rem', pointerEvents: 'none' }}>
-          <img src={MW_LOGO} alt="Memory Watch" style={{ width: isPhone ? '160px' : '200px', height: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.7))' }} />
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: isPhone ? '1.1rem' : '1.3rem', fontWeight: '700', letterSpacing: '0.08em', marginTop: '0.4rem', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>Memory Watch</p>
+        <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '1rem', paddingBottom: '1rem', pointerEvents: 'none' }}>
+          <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2rem)', maxWidth: '90%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.7))' }} />
         </div>
         <div className={cardClass}>
           <div className="mb-1 pb-1 border-b border-purple-900/30 text-center">
-            <p className="text-purple-300 text-3xl font-bold italic whitespace-nowrap">Whatever happened to...</p>
-            <p className="text-gray-300 text-xl mt-0">Search Wikipedia and SSDI records</p>
+            <p className="text-purple-300 text-4xl font-bold italic whitespace-nowrap">Whatever happened to...</p>
           </div>
           {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
           {!watchlistChecked ? (
@@ -1547,6 +1545,7 @@ return (
               <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-4 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
                 <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
               </button>
+              <p className="text-gray-400 text-lg text-center pt-1">Search Wikipedia and SSDI</p>
             </div>
           ) : (
             <WatchlistCheckCard />
