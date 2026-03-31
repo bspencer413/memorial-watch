@@ -1432,11 +1432,12 @@ return (
 
 if (page === 'login') {
 return (
-<div style={{ minHeight: '100dvh', width: '100%', backgroundColor: POSTER_STYLE.backgroundColor, backgroundImage: POSTER_STYLE.backgroundImage, backgroundSize: POSTER_STYLE.backgroundSize, backgroundPosition: POSTER_STYLE.backgroundPosition, backgroundRepeat: POSTER_STYLE.backgroundRepeat, backgroundAttachment: POSTER_STYLE.backgroundAttachment, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingBottom: '2rem' }}>
-<div style={{ width: '100%', maxWidth: '100%', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
-<div className="flex flex-col items-center justify-center" style={{ height: '55vh', marginBottom: '0.75rem' }}>
-<img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '90vw', height: 'auto', maxHeight: '52vh', objectFit: 'contain', filter: 'brightness(1.6) drop-shadow(0 6px 24px rgba(124,58,237,0.8))' }} />
+<div style={{ minHeight: '100dvh', width: '100%', backgroundColor: POSTER_STYLE.backgroundColor, backgroundImage: POSTER_STYLE.backgroundImage, backgroundSize: POSTER_STYLE.backgroundSize, backgroundPosition: POSTER_STYLE.backgroundPosition, backgroundRepeat: POSTER_STYLE.backgroundRepeat, backgroundAttachment: POSTER_STYLE.backgroundAttachment, display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingBottom: '2rem' }}>
+<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 58vh' }}>
+<img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '88vw', height: '54vh', objectFit: 'contain', filter: 'brightness(1.6) drop-shadow(0 6px 24px rgba(124,58,237,0.8))' }} />
 </div>
+<div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+<div style={{ width: '100%' }}>
 <div className="bg-black/60 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-900/40 space-y-3">
 <div className="text-center">
 <p className="text-white/50 text-xl mt-1">Free during beta</p>
@@ -1452,6 +1453,7 @@ return (
 <button onClick={() => { setMode('register'); doAuth(); }} disabled={loading} className="py-4 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl disabled:opacity-50 text-2xl border border-white/30">{loading && mode === 'register' ? '…' : 'Register'}</button>
 </div>
 <p className="text-white/40 text-xl text-center">You'll stay signed in automatically</p>
+</div>
 </div>
 </div>
 </div>
