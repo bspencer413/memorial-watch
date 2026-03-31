@@ -247,7 +247,7 @@ const hasDeathInBrackets = /(\d{4}\s*[-\u2013\u2014]+\s*\d{4})/.test(firstSenten
 const hasYearsInDescription = /(\d{4}\s*[-\u2013\u2014]+\s*\d{4})/.test(description);
 const hasBornOnly = /([^)]*born\s+\w+\s+\d+,\s+\d{4})/.test(firstSentence);
 if (hasBornOnly && !hasDeathInBrackets && !hasYearsInDescription) return false;
-const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*./.test(extract) && !/([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description);
+const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description);
 const diedInExtract = /\b(died|death|passed away|deceased|d.)\b/i.test(extract);
 const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
 const yearRangeInDesc = /(\d{4}[-\u2013\u2014]+\d{4})/.test(description);
