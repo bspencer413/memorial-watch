@@ -53,12 +53,33 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.2';
+const APP_VERSION = '1.0.3';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
+const SSDI_CACHE_KEY = 'mw_ssdi_cache';
 
 const isPhone = window.innerWidth < 500;
 const isTablet = window.innerWidth >= 500 && window.innerWidth < 1024;
 const PT = isPhone ? '41vh' : isTablet ? '46vh' : '44vh';
+
+// ── SSDI localStorage cache helpers ──
+const getSsdiCache = () => {
+  try { return JSON.parse(localStorage.getItem(SSDI_CACHE_KEY) || '{}'); } catch(e) { return {}; }
+};
+const cacheSsdiRecord = (name, record) => {
+  if (!name || !record) return;
+  try {
+    const cache = getSsdiCache();
+    cache[name.trim().toLowerCase()] = record;
+    localStorage.setItem(SSDI_CACHE_KEY, JSON.stringify(cache));
+  } catch(e) {}
+};
+const getCachedSsdi = (name) => {
+  if (!name) return null;
+  try {
+    const cache = getSsdiCache();
+    return cache[name.trim().toLowerCase()] || null;
+  } catch(e) { return null; }
+};
 
 const toTitleCase = (str) => {
   if (!str) return str;
@@ -67,7 +88,6 @@ const toTitleCase = (str) => {
     .replace(/'\w/g, (txt) => txt.toUpperCase());
 };
 
-// ── FIX #2: escape dot so only literal periods are stripped ──
 const normalizeForWiki = (name) => {
   if (!name) return name;
   name = name.trim();
@@ -189,7 +209,6 @@ const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type
   </div>
 );
 
-// ── FIX #22: removed search button from CardPageHeader ──
 const CardPageHeader = ({ title, subtitle }) => (
   <div className="mb-3 pb-2 border-b border-purple-900/30 text-center">
     <h2 className="text-4xl font-black text-white tracking-wide">{title}</h2>
@@ -228,7 +247,6 @@ const PageWrapper = ({ children, bgStyle }) => {
   );
 };
 
-// ── FIX #1: tighter regexes — require parentheses, limit death keywords to first sentence ──
 function isDeceasedCheck(extract, description, deathDate, type) {
   if (type === 'disambiguation') return false;
   if (deathDate) return true;
@@ -243,6 +261,23 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description);
   return hasDeathInBrackets || hasYearsInDescription || yearRangeInDesc || isPastTense || diedInFirstSentence || diedInDescription;
 }
+
+// ── Cached SSDI record display block (reused in drawer) ──
+const SsdiRecordBlock = ({ r }) => {
+  if (!r) return null;
+  return (
+    <div className="bg-gray-800/60 rounded-xl p-3 border border-purple-900/30 mb-3">
+      <p className="text-white font-bold text-xl mb-1">{r.name}</p>
+      {r.middle_name && <p className="text-gray-300 text-xl">Middle: {r.middle_name}</p>}
+      {r.birth_date && <p className="text-gray-300 text-xl">DOB: {r.birth_date}</p>}
+      {r.death_date && <p className="text-gray-300 text-xl">DOD: {r.death_date}</p>}
+      {r.location && <p className="text-gray-300 text-xl">Location: {r.location}</p>}
+      {r.state && !r.location && <p className="text-gray-300 text-xl">State: {r.state}</p>}
+      {r.suffix && <p className="text-gray-400 text-lg">Suffix: {r.suffix}</p>}
+      <p className="text-gray-500 text-sm mt-2">Source: SSDI (records through 2014)</p>
+    </div>
+  );
+};
 
 function App() {
   const [page, setPage] = useState('login');
@@ -263,8 +298,6 @@ function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [sName, setSName] = useState('');
-  const [sBirthYear, setSBirthYear] = useState('');
   const [nw, setNw] = useState({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
@@ -322,7 +355,6 @@ function App() {
     }
   };
 
-  // ── FIX #11: keepAlert navigates to Memories after moving ──
   const keepAlert = async (notifId, watchlistId) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
@@ -388,7 +420,7 @@ function App() {
     } catch (error) { alert('Error deleting account: ' + error.message); }
   };
 
-  const clearSearch = () => { setSName(''); setSBirthYear(''); setWikiProfile(null); setResults([]); setSearched(false); setSelectedDisambig(null); };
+  const clearSearch = () => { setWikiProfile(null); setResults([]); setSearched(false); setSelectedDisambig(null); };
 
   const clearWatchlistCheck = () => {
     setWatchlistCheck(null);
@@ -482,9 +514,10 @@ function App() {
     } catch(e) { return { isDisambiguation: false, notFound: true }; }
   };
 
+  // ── FIX: openWatchlistDrawer falls back to SSDI cache when wiki not found ──
   const openWatchlistDrawer = async (watchItem) => {
     const isMemory = !!(watchItem.is_deceased);
-    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: null, ssdiResults: [], loading: true, newlyDeceased: false, isMemory: isMemory, deathYear: watchItem.death_year || null });
+    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: null, ssdiResults: [], loading: true, newlyDeceased: false, isMemory: isMemory, deathYear: watchItem.death_year || null, cachedSsdi: null, location: watchItem.location || null });
     setSsdiOffset(0); setSsdiHasMore(false); setSsdiAllResults([]);
     setDrawerRefreshing(true);
     const token = localStorage.getItem('token');
@@ -494,7 +527,9 @@ function App() {
     const nameWithPeriods = addInitialPeriods(toTitleCase(watchItem.name));
     if (isMemory) {
       const profile = await fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true }));
-      setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: profile || { notFound: true }, ssdiResults: [], loading: false, newlyDeceased: false, isMemory: true, deathYear: watchItem.death_year || null });
+      // ── FIX: if wiki not found, pull from localStorage SSDI cache ──
+      const cachedSsdi = (!profile || profile.notFound) ? getCachedSsdi(watchItem.name) : null;
+      setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: profile || { notFound: true }, ssdiResults: [], loading: false, newlyDeceased: false, isMemory: true, deathYear: watchItem.death_year || null, cachedSsdi: cachedSsdi, location: watchItem.location || null });
       setDrawerRefreshing(false);
       return;
     }
@@ -519,7 +554,7 @@ function App() {
     setSsdiAllResults(ssdiResults);
     setSsdiHasMore(ssdi.has_more || false);
     setSsdiOffset(ssdiResults.length);
-    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null });
+    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null, cachedSsdi: null, location: watchItem.location || null });
     setDrawerRefreshing(false);
   };
 
@@ -568,7 +603,7 @@ function App() {
     setSsdiLoadingMore(false);
   };
 
-  // ── FIX #16: birth year threshold routes to Memories ──
+  // ── FIX: cache full SSDI record when saving ──
   const addFromSsdi = async (r, forceMemories) => {
     const fullName = r.name;
     var alreadyIn = isOnWatchlist(fullName);
@@ -580,18 +615,18 @@ function App() {
       const birthYearInt = r.birth_date ? parseInt(r.birth_date.split('/').pop()) : null;
       const isDeceased = forceMemories || !!(r.death_date) || (birthYearInt && birthYearInt < DECEASED_BIRTH_YEAR_THRESHOLD);
       const deathYear = r.death_date ? r.death_date.split('/').pop() : null;
+      // cache the full SSDI record
+      cacheSsdiRecord(fullName, Object.assign({}, r, { location: nw.location || r.location || null }));
       const resp = await fetch(API_BASE + '/watchlist', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ name: fullName, location: '', dob: birthYear, is_deceased: isDeceased, death_year: deathYear })
+        body: JSON.stringify({ name: fullName, location: nw.location || '', dob: birthYear, is_deceased: isDeceased, death_year: deathYear })
       });
       if (!resp.ok) throw new Error('Failed');
       await loadWatchlist();
       clearWatchlistCheck();
       setSsdiDrawer(null);
       setPage(isDeceased ? 'memories' : 'watchlist');
-    } catch(e) {
-      alert('Error: ' + e.message);
-    }
+    } catch(e) { alert('Error: ' + e.message); }
     finally { setLoading(false); }
   };
 
@@ -686,7 +721,6 @@ function App() {
     } finally { setWatchlistChecking(false); }
   };
 
-  // ── FIX #16: check birth year threshold in confirmAddWatch ──
   const confirmAddWatch = async () => {
     if (!watchlistCheck) return;
     const topSsdi = watchlistCheck.ssdiResults && watchlistCheck.ssdiResults[0];
@@ -696,6 +730,7 @@ function App() {
     if (alreadyIn) { alert(addName + ' is already in your ' + alreadyIn + '!'); return; }
     const addDobInt = addDob ? parseInt(addDob) : null;
     const isLikelyDeceased = !!(topSsdi && topSsdi.death_date) || (addDobInt && addDobInt < DECEASED_BIRTH_YEAR_THRESHOLD);
+    if (topSsdi) cacheSsdiRecord(addName, Object.assign({}, topSsdi, { location: nw.location || null }));
     setLoadingWl(true);
     try {
       const token = localStorage.getItem('token');
@@ -711,11 +746,12 @@ function App() {
     finally { setLoadingWl(false); }
   };
 
-  // ── FIX #10: new entries go to top of watchlist ──
   const addSearchedNameToWatchlist = async () => {
     const fullName = buildFullName() || watchlistCheck.name;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
+    // cache search params as minimal record
+    cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear ? nw.birthYear : null, location: nw.location || null, middle_name: nw.middle || null, suffix: nw.suffix || null });
     setLoadingWl(true);
     try {
       const token = localStorage.getItem('token');
@@ -729,12 +765,18 @@ function App() {
     finally { setLoadingWl(false); }
   };
 
-  // ── FIX #7 #9: correct destination and navigate to memories ──
   const saveSearchedNameToMemories = async () => {
     const fullName = buildFullName() || (watchlistCheck && watchlistCheck.name) || '';
     if (!fullName) return;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
+    // cache search params
+    const topSsdi = watchlistCheck && watchlistCheck.ssdiResults && watchlistCheck.ssdiResults[0];
+    if (topSsdi) {
+      cacheSsdiRecord(fullName, Object.assign({}, topSsdi, { location: nw.location || null }));
+    } else {
+      cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear || null, location: nw.location || null, middle_name: nw.middle || null, suffix: nw.suffix || null });
+    }
     setLoadingMem(true);
     try {
       const token = localStorage.getItem('token');
@@ -854,7 +896,6 @@ function App() {
     return <SingleProfileCard profile={profile} showAddButton={showAddButton} />;
   };
 
-  // ── FIX #3 #4: SSDI banner format and DOB/DOD labels ──
   const SsdiRecordDrawer = () => {
     if (!ssdiDrawer) return null;
     const r = ssdiDrawer;
@@ -873,18 +914,10 @@ function App() {
           <div className="p-4">
             {ssdiPassed && (
               <div className="px-4 py-2 rounded-xl mb-4 bg-gray-700">
-                <span className="text-white font-black text-xl">
-                  {'Passed Away' + (r.death_date ? ' — ' + r.death_date : '')}
-                </span>
+                <span className="text-white font-black text-xl">{'Passed Away' + (r.death_date ? ' — ' + r.death_date : '')}</span>
               </div>
             )}
-            <div className="bg-gray-800/60 rounded-xl p-3 mb-4 border border-purple-900/30">
-              <p className="text-white font-bold text-xl mb-1">{r.name}</p>
-              {r.middle_name && <p className="text-gray-400 text-sm">Middle: {r.middle_name}</p>}
-              {r.birth_date && <p className="text-gray-300 text-xl">DOB: {r.birth_date}</p>}
-              {r.death_date && <p className="text-gray-300 text-xl">DOD: {r.death_date}</p>}
-              <p className="text-gray-500 text-lg mt-2">SSDI (thru 2014)</p>
-            </div>
+            <SsdiRecordBlock r={Object.assign({}, r, { location: nw.location || r.location || null })} />
             {(() => {
               if (alreadyWatching === 'memories') return <p className="text-green-400 text-xl text-center font-bold mb-3">Already in your Memories</p>;
               if (alreadyWatching === 'watchlist' && ssdiPassed) return (
@@ -901,9 +934,10 @@ function App() {
                       });
                       if (found) await fetch(API_BASE + '/watchlist/' + found.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
                       const deathYear = r.death_date ? r.death_date.split('/').pop() : null;
+                      cacheSsdiRecord(r.name, Object.assign({}, r, { location: nw.location || null }));
                       await fetch(API_BASE + '/watchlist', {
                         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                        body: JSON.stringify({ name: r.name, location: '', dob: r.birth_date ? r.birth_date.split('/').pop() : '', is_deceased: true, death_year: deathYear })
+                        body: JSON.stringify({ name: r.name, location: nw.location || '', dob: r.birth_date ? r.birth_date.split('/').pop() : '', is_deceased: true, death_year: deathYear })
                       });
                       await loadWatchlist(); setSsdiDrawer(null); setPage('memories');
                     } catch(e) { alert('Error: ' + e.message); }
@@ -972,7 +1006,6 @@ function App() {
     );
   };
 
-  // ── FIX #6 #7 #8 #9: clean button logic, separate loading, correct navigation ──
   const WatchlistCheckCard = () => {
     if (!watchlistCheck) return null;
     const { profile: rawProfile, name, ssdiResults: rawSsdi } = watchlistCheck;
@@ -1095,9 +1128,7 @@ function App() {
                 <PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
               </button>
             )}
-            <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center mt-2">
-              Search for another name
-            </button>
+            <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center mt-2">Search for another name</button>
           </div>
         </div>
       );
@@ -1136,8 +1167,6 @@ function App() {
           {!isDeceased && (
             <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
           )}
-
-          {/* ── Dead: one button only — Save to Memories ── */}
           {isDeceased && (
             <>
               <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
@@ -1170,8 +1199,6 @@ function App() {
               </div>
             </>
           )}
-
-          {/* ── Alive or not found: Watchlist primary, Memories secondary ── */}
           {!isDeceased && (
             <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
               {hasSSdi && <p className="text-gray-400 text-xl text-center">Tap a name above to add to your list, or:</p>}
@@ -1200,10 +1227,10 @@ function App() {
     );
   };
 
-  // ── FIX #5 #15: DOD label, Saved vs Passed Away, Save to Memories for living ──
+  // ── FIX: WikiDrawer shows cached SSDI when wiki not found for memory entries ──
   const WikiDrawer = () => {
     if (!drawerData) return null;
-    const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear } = drawerData;
+    const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear, cachedSsdi, location } = drawerData;
     const noWikiInfo = !drawerLoading && (!profile || profile.notFound || (!profile.title && !profile.extract));
     const nameParts = name.trim().split(/\s+/);
     const drawerFirst = nameParts[0] || '';
@@ -1248,10 +1275,27 @@ function App() {
                               </div>
                             </div>
                             {profile.extract && <p className="text-gray-100 text-xl leading-relaxed mb-3">{profile.extract}</p>}
+                            {location && <p className="text-gray-300 text-xl">Location: {location}</p>}
                           </>
                         );
                       }
-                      return <div className="text-center py-3 mb-3"><p className="text-gray-400 text-xl">No Wikipedia entry found for this person.</p></div>;
+                      // ── FIX: fall back to cached SSDI record ──
+                      if (cachedSsdi) {
+                        return (
+                          <>
+                            <SsdiRecordBlock r={cachedSsdi} />
+                            <div className="p-2 bg-purple-900/10 border border-purple-800/20 rounded-xl mb-3">
+                              <p className="text-purple-300 text-sm">Saved from SSDI records (through 2014). No Wikipedia entry found for this person.</p>
+                            </div>
+                          </>
+                        );
+                      }
+                      return (
+                        <div className="text-center py-3 mb-3">
+                          <p className="text-gray-400 text-xl">No additional information found for this person.</p>
+                          {location && <p className="text-gray-300 text-xl mt-2">Location: {location}</p>}
+                        </div>
+                      );
                     })()}
                   </>
                 )}
@@ -1279,6 +1323,7 @@ function App() {
                           </div>
                         </div>
                         {!profile.isDisambiguation && profile.extract && <p className="text-gray-100 text-xl leading-relaxed mb-3">{profile.extract}</p>}
+                        {location && <p className="text-gray-300 text-xl mb-2">Location: {location}</p>}
                         {profile.isDisambiguation && <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3"><p className="text-yellow-200 text-xl text-center">Multiple people share this name</p></div>}
                       </>
                     )}
@@ -1307,7 +1352,6 @@ function App() {
                         })}
                       </div>
                     )}
-                    {/* ── FIX #15: Save to Memories for living watchlist entries ── */}
                     {profile && !profile.deathDate && !profile.isDisambiguation && drawerData.watchlistId && (
                       <button onClick={async () => {
                         const token = localStorage.getItem('token');
@@ -1316,7 +1360,7 @@ function App() {
                         try {
                           await fetch(API_BASE + '/watchlist', {
                             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                            body: JSON.stringify({ name: name, location: '', dob: '', is_deceased: true, death_year: null })
+                            body: JSON.stringify({ name: name, location: location || '', dob: '', is_deceased: true, death_year: null })
                           });
                           await loadWatchlist(); setDrawerData(null); setPage('memories');
                         } catch(e) { alert('Error: ' + e.message); }
@@ -1369,7 +1413,6 @@ function App() {
       <SsdiRecordDrawer />
       <div className={containerClass}>
 
-        {/* ── FIX #14 #22: updated subtitle, no search button ── */}
         {page === 'watchlist' && (
           <div className="space-y-3" style={{ paddingTop: watchlist.filter(w => !w.is_deceased).length > 0 ? '1rem' : PT }}>
             <div className={cardClass}>
@@ -1440,6 +1483,7 @@ function App() {
                   <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} />
                   <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
                   <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
+                  <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
                   <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-4 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
                     <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
                   </button>
@@ -1452,7 +1496,6 @@ function App() {
           </div>
         )}
 
-        {/* ── FIX #12 #13: Memories redesign — no strikethrough, no View button, tap name ── */}
         {page === 'memories' && (
           <div className="space-y-3" style={{ paddingTop: "1rem" }}>
             <div className={cardClass}>
@@ -1475,6 +1518,7 @@ function App() {
                               <h3 className="font-semibold text-2xl text-white underline decoration-dotted truncate">{w.name}</h3>
                             </button>
                             <span className="text-xl text-gray-400 font-bold">{statusText}</span>
+                            {w.location && <p className="text-gray-500 text-lg">{w.location}</p>}
                           </div>
                           <button onClick={() => delWatch(w.id)} className="p-2 text-purple-500 hover:bg-purple-900/30 rounded-lg ml-2 shrink-0"><TrashIcon /></button>
                         </div>
@@ -1487,7 +1531,6 @@ function App() {
           </div>
         )}
 
-        {/* ── FIX #17 #22: updated subtitle, no search button ── */}
         {page === 'notifications' && (
           <div className="space-y-3" style={{ paddingTop: "1rem" }}>
             <div className={cardClass}>
@@ -1517,7 +1560,6 @@ function App() {
           </div>
         )}
 
-        {/* ── FIX #18 #19 #20 #22: new About copy, Keep explanation, disclaimer fix ── */}
         {page === 'about' && (
           <div className="space-y-4 pb-8" style={{ paddingTop: '1rem' }}>
             <div className={cardClass}>
