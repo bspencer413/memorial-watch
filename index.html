@@ -53,7 +53,7 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.0.2';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
 
 const isPhone = window.innerWidth < 500;
@@ -67,6 +67,7 @@ const toTitleCase = (str) => {
     .replace(/'\w/g, (txt) => txt.toUpperCase());
 };
 
+// ── FIX #2: escape dot so only literal periods are stripped ──
 const normalizeForWiki = (name) => {
   if (!name) return name;
   name = name.trim();
@@ -125,19 +126,14 @@ const confidenceLabel = (score) => {
   return 'Partial Match';
 };
 
-const HomeIcon = () => (
+const SearchIcon = () => (
   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
 const HeartIcon = () => (
   <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-  </svg>
-);
-const SearchIcon = () => (
-  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
   </svg>
 );
 const InfoIcon = () => (
@@ -182,7 +178,7 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type='text', maxLength, inputClass, noAutoCorrect, numeric }) => (
+const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type='text', maxLength, inputClass, numeric }) => (
   <div className="relative">
     <input type={numeric ? 'tel' : type} placeholder={placeholder} value={value} onChange={onChange} onBlur={onBlur} onKeyPress={onKeyPress} maxLength={maxLength} className={inputClass + ' pr-10'}
       autoCorrect="off" autoCapitalize="words" autoComplete="off" spellCheck="false"
@@ -193,18 +189,11 @@ const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type
   </div>
 );
 
-const CardPageHeader = ({ title, subtitle, onHome, hideHome }) => (
-  <div className="mb-3 pb-2 border-b border-purple-900/30">
-    <div className="flex items-center justify-between">
-      <div className="w-10" />
-      <h2 className="text-4xl font-black text-white tracking-wide text-center flex-1">{title}</h2>
-      {!hideHome ? (
-        <button onClick={onHome} className="flex flex-col items-center text-white hover:text-purple-400 transition-colors w-10">
-          <SearchIcon /><span className="text-sm">Search</span>
-        </button>
-      ) : <div className="w-10" />}
-    </div>
-    {subtitle && <p className="text-gray-300 text-xl mt-1 text-center">{subtitle}</p>}
+// ── FIX #22: removed search button from CardPageHeader ──
+const CardPageHeader = ({ title, subtitle }) => (
+  <div className="mb-3 pb-2 border-b border-purple-900/30 text-center">
+    <h2 className="text-4xl font-black text-white tracking-wide">{title}</h2>
+    {subtitle && <p className="text-gray-300 text-xl mt-1">{subtitle}</p>}
   </div>
 );
 
@@ -239,6 +228,7 @@ const PageWrapper = ({ children, bgStyle }) => {
   );
 };
 
+// ── FIX #1: tighter regexes — require parentheses, limit death keywords to first sentence ──
 function isDeceasedCheck(extract, description, deathDate, type) {
   if (type === 'disambiguation') return false;
   if (deathDate) return true;
@@ -248,10 +238,10 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const hasBornOnly = /\([^)]*born\s+\w+\s+\d+,\s+\d{4}\)/.test(firstSentence);
   if (hasBornOnly && !hasDeathInBrackets && !hasYearsInDescription) return false;
   const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description);
-  const diedInExtract = /\b(died|death|passed away|deceased|d\.)\b/i.test(extract);
-  const diedInDescription = /\b(died|death|deceased)\b/i.test(description);
+  const diedInFirstSentence = /\b(died|passed away|deceased)\b/i.test(firstSentence);
+  const diedInDescription = /\b(died|passed away|deceased)\b/i.test(description);
   const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description);
-  return hasDeathInBrackets || hasYearsInDescription || yearRangeInDesc || isPastTense || diedInExtract || diedInDescription;
+  return hasDeathInBrackets || hasYearsInDescription || yearRangeInDesc || isPastTense || diedInFirstSentence || diedInDescription;
 }
 
 function App() {
@@ -267,13 +257,13 @@ function App() {
   const [watchlistChecking, setWatchlistChecking] = useState(false);
   const [watchlistChecked, setWatchlistChecked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingWl, setLoadingWl] = useState(false);
+  const [loadingMem, setLoadingMem] = useState(false);
   const [backendWaking, setBackendWaking] = useState(false);
-  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [sName, setSName] = useState('');
-  const [sLoc, setSLoc] = useState('');
   const [sBirthYear, setSBirthYear] = useState('');
   const [nw, setNw] = useState({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
   const [editingId, setEditingId] = useState(null);
@@ -332,6 +322,7 @@ function App() {
     }
   };
 
+  // ── FIX #11: keepAlert navigates to Memories after moving ──
   const keepAlert = async (notifId, watchlistId) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
@@ -348,7 +339,8 @@ function App() {
           });
         }
         await loadWatchlist();
-      } catch(e) { console.log('keepAlert memory error:', e); }
+        setPage('memories');
+      } catch(e) { console.log('keepAlert error:', e); }
     }
   };
 
@@ -396,7 +388,7 @@ function App() {
     } catch (error) { alert('Error deleting account: ' + error.message); }
   };
 
-  const clearSearch = () => { setSName(''); setSLoc(''); setSBirthYear(''); setWikiProfile(null); setResults([]); setSearched(false); setSelectedDisambig(null); };
+  const clearSearch = () => { setSName(''); setSBirthYear(''); setWikiProfile(null); setResults([]); setSearched(false); setSelectedDisambig(null); };
 
   const clearWatchlistCheck = () => {
     setWatchlistCheck(null);
@@ -435,7 +427,7 @@ function App() {
         const months = 'January|February|March|April|May|June|July|August|September|October|November|December';
         const dateMatches = extract.match(new RegExp('(?:' + months + ') [0-9]{1,2}, [0-9]{4}', 'g'));
         if (dateMatches && dateMatches.length >= 2) deathDate = dateMatches[dateMatches.length - 1];
-        else if (dateMatches && dateMatches.length === 1 && /died|death|passed|\u2013|\u2014/.test(extract.split('.')[0])) deathDate = dateMatches[0];
+        else if (dateMatches && dateMatches.length === 1 && /died|passed|\u2013|\u2014/.test(extract.split('.')[0])) deathDate = dateMatches[0];
       }
       if (deathDate && !deathFromCategory) {
         const yrM = String(deathDate).match(/\d{4}/);
@@ -576,6 +568,7 @@ function App() {
     setSsdiLoadingMore(false);
   };
 
+  // ── FIX #16: birth year threshold routes to Memories ──
   const addFromSsdi = async (r, forceMemories) => {
     const fullName = r.name;
     var alreadyIn = isOnWatchlist(fullName);
@@ -597,10 +590,7 @@ function App() {
       setSsdiDrawer(null);
       setPage(isDeceased ? 'memories' : 'watchlist');
     } catch(e) {
-      const msg = e.message === 'Failed to fetch' || e.message === 'Load failed'
-        ? 'Network error — the server may be waking up. Please try again in a moment.'
-        : 'Error: ' + e.message;
-      alert(msg);
+      alert('Error: ' + e.message);
     }
     finally { setLoading(false); }
   };
@@ -651,7 +641,6 @@ function App() {
       var ssdiRaw = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.results || []) : [];
       var ssdiApiHasMore = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.has_more || false) : false;
       var birthYearFallback = false;
-      var middleFallback = false;
       var noMiMatches = false;
       var hasMi = !!(nw.middle && nw.middle.trim());
       var hasDob = !!(nw.birthYear && nw.birthYear.trim());
@@ -665,7 +654,7 @@ function App() {
               const fbData = await fbResp.json();
               if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; }
             }
-          } catch(e) { console.log('case4 fallback error:', e); }
+          } catch(e) {}
         } else if (!hasMi && hasDob) {
           try {
             const fb = new URLSearchParams({ name: ssdiName });
@@ -674,7 +663,7 @@ function App() {
               const fbData = await fbResp.json();
               if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; }
             }
-          } catch(e) { console.log('case3 fallback error:', e); }
+          } catch(e) {}
         } else if (hasMi && !hasDob) {
           noMiMatches = true;
         }
@@ -689,14 +678,15 @@ function App() {
       const profile = wikiResp.status === 'fulfilled'
         ? (wikiResp.value || { isDisambiguation: false, notFound: true })
         : { isDisambiguation: false, notFound: true };
-      setWatchlistCheck({ profile, name, ssdiResults, ssdiHasMore: ssdiApiHasMore, birthYearFallback, middleFallback, noMiMatches });
+      setWatchlistCheck({ profile, name, ssdiResults, ssdiHasMore: ssdiApiHasMore, birthYearFallback, noMiMatches });
       setWatchlistChecked(true);
     } catch (error) {
-      setWatchlistCheck({ profile: { isDisambiguation: false, notFound: true }, name, ssdiResults: [], ssdiHasMore: false, birthYearFallback: false, middleFallback: false, noMiMatches: false });
+      setWatchlistCheck({ profile: { isDisambiguation: false, notFound: true }, name, ssdiResults: [], ssdiHasMore: false, birthYearFallback: false, noMiMatches: false });
       setWatchlistChecked(true);
     } finally { setWatchlistChecking(false); }
   };
 
+  // ── FIX #16: check birth year threshold in confirmAddWatch ──
   const confirmAddWatch = async () => {
     if (!watchlistCheck) return;
     const topSsdi = watchlistCheck.ssdiResults && watchlistCheck.ssdiResults[0];
@@ -704,29 +694,29 @@ function App() {
     const addDob = topSsdi && topSsdi.birth_date ? topSsdi.birth_date.split('/').pop() : nw.birthYear;
     var alreadyIn = isOnWatchlist(addName);
     if (alreadyIn) { alert(addName + ' is already in your ' + alreadyIn + '!'); return; }
-    setLoading(true);
+    const addDobInt = addDob ? parseInt(addDob) : null;
+    const isLikelyDeceased = !!(topSsdi && topSsdi.death_date) || (addDobInt && addDobInt < DECEASED_BIRTH_YEAR_THRESHOLD);
+    setLoadingWl(true);
     try {
       const token = localStorage.getItem('token');
+      const deathYr = topSsdi && topSsdi.death_date ? topSsdi.death_date.split('/').pop() : null;
       const r = await fetch(API_BASE + '/watchlist', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ name: addName, location: nw.location, dob: addDob })
+        body: JSON.stringify({ name: addName, location: nw.location, dob: addDob, is_deceased: isLikelyDeceased, death_year: deathYr })
       });
       if (!r.ok) throw new Error('Failed');
-      await loadWatchlist(); clearWatchlistCheck(); setPage('watchlist');
-    } catch (error) {
-      const msg = error.message === 'Failed to fetch' || error.message === 'Load failed'
-        ? 'Network error — the server may be waking up. Please try again in a moment.'
-        : 'Error: ' + error.message;
-      alert(msg);
-    }
-    finally { setLoading(false); }
+      await loadWatchlist(); clearWatchlistCheck();
+      setPage(isLikelyDeceased ? 'memories' : 'watchlist');
+    } catch (error) { alert('Error: ' + error.message); }
+    finally { setLoadingWl(false); }
   };
 
+  // ── FIX #10: new entries go to top of watchlist ──
   const addSearchedNameToWatchlist = async () => {
     const fullName = buildFullName() || watchlistCheck.name;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
-    setLoading(true);
+    setLoadingWl(true);
     try {
       const token = localStorage.getItem('token');
       const r = await fetch(API_BASE + '/watchlist', {
@@ -736,16 +726,16 @@ function App() {
       if (!r.ok) throw new Error('Failed');
       await loadWatchlist(); clearWatchlistCheck(); setPage('watchlist');
     } catch (error) { alert('Error: ' + error.message); }
-    finally { setLoading(false); }
+    finally { setLoadingWl(false); }
   };
 
-  // ── FIX: only marks deceased if wiki confirms death ──
+  // ── FIX #7 #9: correct destination and navigate to memories ──
   const saveSearchedNameToMemories = async () => {
     const fullName = buildFullName() || (watchlistCheck && watchlistCheck.name) || '';
     if (!fullName) return;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
-    setLoading(true);
+    setLoadingMem(true);
     try {
       const token = localStorage.getItem('token');
       const profile = watchlistCheck && watchlistCheck.profile;
@@ -760,7 +750,7 @@ function App() {
       if (!r.ok) throw new Error('Failed');
       await loadWatchlist(); clearWatchlistCheck(); setPage('memories');
     } catch (error) { alert('Error: ' + error.message); }
-    finally { setLoading(false); }
+    finally { setLoadingMem(false); }
   };
 
   const addWatchFromSearch = async (profileTitle) => {
@@ -774,7 +764,7 @@ function App() {
         body: JSON.stringify({ name: profileTitle, location: '', dob: '' })
       });
       if (!r.ok) throw new Error('Failed');
-      await loadWatchlist(); clearSearch(); setPage('notifications');
+      await loadWatchlist(); clearSearch(); setPage('watchlist');
     } catch (error) { alert('Error: ' + error.message); }
     finally { setLoading(false); }
   };
@@ -791,7 +781,7 @@ function App() {
   const unreadCount = notifications.length;
   const iClass = "w-full px-4 py-4 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
   const cardClass = "bg-black/35 rounded-2xl p-4 shadow-lg border border-purple-900/30 backdrop-blur-sm";
-  const containerClass = (page === 'about' || page === 'privacy') ? 'w-full max-w-3xl mx-auto px-3' : 'w-full px-3';
+  const containerClass = (page === 'about') ? 'w-full max-w-3xl mx-auto px-3' : 'w-full px-3';
 
   const SingleProfileCard = ({ profile, showAddButton, onBack }) => {
     if (!profile || !profile.title) return null;
@@ -801,24 +791,23 @@ function App() {
       <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
         <div className={'px-5 py-2 flex items-center gap-3 ' + (profile.deathDate ? 'bg-gray-800' : isDisambig ? 'bg-yellow-600' : 'bg-green-700')}>
           <span className="text-white font-black tracking-widest text-xl">{profile.deathDate ? 'Passed Away' : isDisambig ? 'Multiple Matches' : 'Likely Alive'}</span>
-          {profile.deathDate && profile.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-auto">Died: {profile.deathDate}</span>}
-          {onBack && <button onClick={onBack} className="ml-auto text-white/60 text-sm underline">Back to list</button>}
+          {profile.deathDate && profile.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-auto">DOD: {profile.deathDate}</span>}
+          {onBack && <button onClick={onBack} className="ml-auto text-white/60 text-sm underline">Back</button>}
         </div>
         <div className="bg-gray-900/70 p-4">
           <div className="flex gap-3 items-start mb-3">
             {profile.thumbnail ? <img src={profile.thumbnail} alt={profile.title} className="w-16 h-16 rounded-full object-cover border-2 border-purple-600/50 shrink-0" /> : <div className="w-16 h-16 rounded-full bg-purple-900/40 flex items-center justify-center shrink-0 text-2xl">?</div>}
             <div className="flex-1">
               <h2 className="text-white text-2xl font-bold mb-1">{profile.title}</h2>
-              {profile.birthDate && <p className="text-purple-300 text-xl font-bold">Born: {profile.birthDate}</p>}
+              {profile.birthDate && <p className="text-purple-300 text-xl font-bold">DOB: {profile.birthDate}</p>}
               {!isDisambig && <p className="text-purple-400 text-xl italic mt-1">{profile.description}</p>}
             </div>
           </div>
           {!isDisambig && profile.extract && <p className="text-gray-100 text-xl leading-relaxed mb-3">{profile.extract}</p>}
-          {profile.deathDate && <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3"><p className="text-gray-200 text-xl text-center">This person has passed away</p></div>}
           {showAddButton && (
             <div className="space-y-2 mb-2">
               {!profile.deathDate && (alreadyWatching
-                ? <button onClick={() => setPage('notifications')} className="w-full py-3 bg-green-700/30 border border-green-500/40 text-green-200 rounded-xl text-xl text-center">Already in your {alreadyWatching}</button>
+                ? <p className="text-green-400 text-xl text-center font-bold">Already in your {alreadyWatching}</p>
                 : <button onClick={() => addWatchFromSearch(profile.title)} disabled={loading} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50"><PlusIcon /> Add to Watchlist</button>
               )}
               <button onClick={clearSearch} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center">Clear Search</button>
@@ -865,27 +854,7 @@ function App() {
     return <SingleProfileCard profile={profile} showAddButton={showAddButton} />;
   };
 
-  class WatchlistErrorBoundary extends React.Component {
-    constructor(props) { super(props); this.state = { hasError: false }; }
-    static getDerivedStateFromError() { return { hasError: true }; }
-    render() {
-      if (this.state.hasError) {
-        return (
-          <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
-            <div className="px-5 py-2 bg-blue-700"><span className="text-white font-black tracking-widest text-xl">Not Found</span></div>
-            <div className="bg-gray-900/70 p-4">
-              <p className="text-white text-2xl font-bold mb-2">Not found</p>
-              <p className="text-gray-300 text-xl mb-3">Add to watchlist anyway?</p>
-              <button onClick={() => this.props.onAdd && this.props.onAdd()} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl mb-2">Add to Watchlist</button>
-              <button onClick={() => this.props.onCancel && this.props.onCancel()} className="w-full py-2 text-white/40 text-xl text-center">Cancel</button>
-            </div>
-          </div>
-        );
-      }
-      return this.props.children;
-    }
-  }
-
+  // ── FIX #3 #4: SSDI banner format and DOB/DOD labels ──
   const SsdiRecordDrawer = () => {
     if (!ssdiDrawer) return null;
     const r = ssdiDrawer;
@@ -903,16 +872,17 @@ function App() {
           </div>
           <div className="p-4">
             {ssdiPassed && (
-              <div className="px-4 py-2 rounded-xl mb-4 flex items-center gap-3 bg-gray-700">
-                <span className="text-white font-black text-xl">Passed Away</span>
-                {r.death_date && <span className="text-white/80 text-xl ml-auto">Died: {r.death_date}</span>}
+              <div className="px-4 py-2 rounded-xl mb-4 bg-gray-700">
+                <span className="text-white font-black text-xl">
+                  {'Passed Away' + (r.death_date ? ' — ' + r.death_date : '')}
+                </span>
               </div>
             )}
             <div className="bg-gray-800/60 rounded-xl p-3 mb-4 border border-purple-900/30">
               <p className="text-white font-bold text-xl mb-1">{r.name}</p>
               {r.middle_name && <p className="text-gray-400 text-sm">Middle: {r.middle_name}</p>}
-              {r.birth_date && <p className="text-gray-300 text-xl">Born: {r.birth_date}</p>}
-              {r.death_date && <p className="text-gray-300 text-xl">Died: {r.death_date}</p>}
+              {r.birth_date && <p className="text-gray-300 text-xl">DOB: {r.birth_date}</p>}
+              {r.death_date && <p className="text-gray-300 text-xl">DOD: {r.death_date}</p>}
               <p className="text-gray-500 text-lg mt-2">SSDI (thru 2014)</p>
             </div>
             {(() => {
@@ -962,7 +932,7 @@ function App() {
     );
   };
 
-  const SSIDResultsBlock = ({ ssdiResults, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix, apiHasMore, onLoadMore, birthYearFallback, middleFallback }) => {
+  const SSIDResultsBlock = ({ ssdiResults, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix, apiHasMore, onLoadMore, birthYearFallback }) => {
     if (!ssdiResults || ssdiResults.length === 0) return null;
     const tooMany = ssdiResults.length >= 10 && !searchMiddle && !searchBirthYear;
     const visibleResults = ssdiResults.slice(0, ssdiPage * 10);
@@ -976,8 +946,7 @@ function App() {
     return (
       <div className="mb-3 p-3 bg-gray-800/60 rounded-xl border border-purple-900/30">
         <p className="text-purple-300 text-2xl font-bold mb-2">Possible matches in SSDI (thru 2014) — tap a name to view</p>
-        {birthYearFallback && searchBirthYear && <div className="mb-2 p-2 bg-yellow-900/30 border border-yellow-700/40 rounded-lg"><p className="text-yellow-300 text-sm">No exact birth year match found — showing all results. Tap the closest match.</p></div>}
-        {middleFallback && <div className="mb-2 p-2 bg-yellow-900/30 border border-yellow-700/40 rounded-lg"><p className="text-yellow-300 text-sm">No middle initial match found in SSDI — showing all first/last name results.</p></div>}
+        {birthYearFallback && searchBirthYear && <div className="mb-2 p-2 bg-yellow-900/30 border border-yellow-700/40 rounded-lg"><p className="text-yellow-300 text-sm">No exact birth year match — showing all results.</p></div>}
         {tooMany && <div className="mb-2 p-2 bg-yellow-900/30 border border-yellow-700/40 rounded-lg"><p className="text-yellow-300 text-sm">Many matches found. Add a middle name, initial or birth year to narrow results.</p></div>}
         {showMoreBtn()}
         {visibleResults.map((r, i) => {
@@ -993,9 +962,8 @@ function App() {
                 </div>
                 <span className={'text-base font-bold ml-2 shrink-0 ' + confColor}>{conf}</span>
               </div>
-              {r.birth_date && <p className="text-gray-400 text-sm">Born: {r.birth_date}</p>}
-              {r.death_date ? <p className="text-white text-sm font-semibold">Died: {r.death_date}</p> : <p className="text-gray-600 text-xl italic">Not found in SSDI (thru 2014)</p>}
-              <p className="text-gray-500 text-sm">SSDI (thru 2014)</p>
+              {r.birth_date && <p className="text-gray-400 text-sm">DOB: {r.birth_date}</p>}
+              {r.death_date ? <p className="text-white text-sm font-semibold">DOD: {r.death_date}</p> : <p className="text-gray-600 text-xl italic">Not found in SSDI (thru 2014)</p>}
             </div>
           );
         })}
@@ -1004,6 +972,7 @@ function App() {
     );
   };
 
+  // ── FIX #6 #7 #8 #9: clean button logic, separate loading, correct navigation ──
   const WatchlistCheckCard = () => {
     if (!watchlistCheck) return null;
     const { profile: rawProfile, name, ssdiResults: rawSsdi } = watchlistCheck;
@@ -1037,14 +1006,22 @@ function App() {
       return true;
     })();
 
+    const isDeceased = profile && profile.deathDate;
+    const notFound = !profile || profile.notFound === true || (!profile.title && !profile.extract);
+    const hasSSdi = ssdiResults && ssdiResults.length > 0;
+    const showWikiBio = (!notFound) && (wikiMatchConfident || isDeceased);
+    const showBanner = showWikiBio || (!hasSSdi && notFound);
+    const bannerBg = isDeceased ? 'bg-gray-800' : (!notFound && wikiMatchConfident ? 'bg-green-700' : 'bg-blue-700');
+    const bannerText = isDeceased ? 'Passed Away' : (!notFound && wikiMatchConfident ? 'Likely Alive' : 'Name Not Found');
+
     if (profile && profile.isDisambiguation === true) {
       if (selectedDisambig) {
-        const isDeceased = selectedDisambig.deathDate;
+        const selDeceased = selectedDisambig.deathDate;
         return (
           <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
-            <div className={'px-5 py-2 flex items-center gap-3 ' + (isDeceased ? 'bg-gray-800' : 'bg-green-700')}>
-              <span className="text-white font-black tracking-widest text-xl">{isDeceased ? 'Passed Away' : 'Likely Alive'}</span>
-              {isDeceased && selectedDisambig.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-auto">Died: {selectedDisambig.deathDate}</span>}
+            <div className={'px-5 py-2 flex items-center gap-3 ' + (selDeceased ? 'bg-gray-800' : 'bg-green-700')}>
+              <span className="text-white font-black tracking-widest text-xl">{selDeceased ? 'Passed Away' : 'Likely Alive'}</span>
+              {selDeceased && selectedDisambig.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-auto">DOD: {selectedDisambig.deathDate}</span>}
               <button onClick={() => setSelectedDisambig(null)} className="ml-auto text-white/60 text-sm underline">Back</button>
             </div>
             <div className="bg-gray-900/70 p-4">
@@ -1052,28 +1029,42 @@ function App() {
                 {selectedDisambig.thumbnail ? <img src={selectedDisambig.thumbnail} alt={selectedDisambig.title} className="w-16 h-16 rounded-full object-cover border-2 border-purple-600/50 shrink-0" /> : <div className="w-16 h-16 rounded-full bg-purple-900/40 flex items-center justify-center shrink-0 text-2xl">?</div>}
                 <div className="flex-1">
                   <h2 className="text-white text-2xl font-bold mb-1">{selectedDisambig.title}</h2>
-                  {selectedDisambig.birthDate && <p className="text-purple-300 text-xl font-bold">Born: {selectedDisambig.birthDate}</p>}
+                  {selectedDisambig.birthDate && <p className="text-purple-300 text-xl font-bold">DOB: {selectedDisambig.birthDate}</p>}
                   <p className="text-purple-400 text-xl italic mt-1">{selectedDisambig.description}</p>
                 </div>
               </div>
               {selectedDisambig.extract && <p className="text-gray-100 text-xl leading-relaxed mb-3">{selectedDisambig.extract}</p>}
-              <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} middleFallback={watchlistCheck && watchlistCheck.middleFallback} noMiMatches={watchlistCheck && watchlistCheck.noMiMatches} />
-              {isDeceased && <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3"><p className="text-gray-200 text-xl text-center">This person has passed away.{selectedDisambig.deathDate !== 'deceased' ? ' Died: ' + selectedDisambig.deathDate : ''}</p></div>}
-              {!isDeceased && (
+              <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
+              {selDeceased ? (
                 <div className="space-y-2 mt-2">
-                  <p className="text-white/80 text-xl text-center font-medium border-t border-white/10 pt-2">Add {selectedDisambig.title} to watchlist?</p>
-                  <button onClick={() => { setWatchlistCheck(Object.assign({}, watchlistCheck, { name: selectedDisambig.title })); confirmAddWatch(); }} disabled={loading} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                    <PlusIcon /> {loading ? 'Adding...' : 'Yes, Add to Watchlist'}
-                  </button>
-                  {buildFullName() !== selectedDisambig.title && !isOnWatchlist(buildFullName()) && (
-                    <button onClick={addSearchedNameToWatchlist} disabled={loading} className="w-full py-3 bg-gray-700/50 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 disabled:opacity-50">
-                      <PlusIcon /> Add "{buildFullName()}" instead
+                  {!isOnWatchlist(selectedDisambig.title) && (
+                    <button onClick={async () => {
+                      setLoadingMem(true);
+                      try {
+                        const token = localStorage.getItem('token');
+                        const deathYr = selectedDisambig.deathDate ? (selectedDisambig.deathDate.match(/\d{4}/) ? selectedDisambig.deathDate.match(/\d{4}/)[0] : null) : null;
+                        const r = await fetch(API_BASE + '/watchlist', {
+                          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                          body: JSON.stringify({ name: selectedDisambig.title, location: '', dob: '', is_deceased: true, death_year: deathYr })
+                        });
+                        if (!r.ok) throw new Error('Failed');
+                        await loadWatchlist(); clearWatchlistCheck(); setPage('memories');
+                      } catch(e) { alert('Error: ' + e.message); }
+                      finally { setLoadingMem(false); }
+                    }} disabled={loadingMem} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingMem ? 'Saving...' : 'Save "' + selectedDisambig.title + '" to Memories'}
                     </button>
                   )}
+                  <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center">Search for another name</button>
+                </div>
+              ) : (
+                <div className="space-y-2 mt-2">
+                  <button onClick={() => { setWatchlistCheck(Object.assign({}, watchlistCheck, { name: selectedDisambig.title })); confirmAddWatch(); }} disabled={loadingWl} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                    <PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + selectedDisambig.title + '" to Watchlist'}
+                  </button>
                   <button onClick={() => setSelectedDisambig(null)} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center">Back to list</button>
                 </div>
               )}
-              {isDeceased && <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center mt-2">Try Another Name</button>}
             </div>
           </div>
         );
@@ -1083,7 +1074,7 @@ function App() {
           <div className="px-5 py-2 bg-yellow-600"><span className="text-white font-black tracking-widest text-xl">MULTIPLE MATCHES</span></div>
           <div className="bg-gray-900/70 p-4">
             <p className="text-gray-300 text-xl mb-1">Several people share this name.</p>
-            <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} middleFallback={watchlistCheck && watchlistCheck.middleFallback} noMiMatches={watchlistCheck && watchlistCheck.noMiMatches} />
+            <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
             <div className="space-y-2">
               {(profile.matches || []).map((m, i) => (
                 <button key={i} onClick={() => setSelectedDisambig(m)} className="w-full p-3 bg-gray-800/60 border border-purple-900/30 rounded-xl text-left">
@@ -1099,37 +1090,24 @@ function App() {
               ))}
               {(profile.matches || []).length === 0 && <p className="text-gray-400 text-xl text-center py-3">No matches found. Try adding a middle name or initial.</p>}
             </div>
-            {!isOnWatchlist(buildFullName()) && (
-              <button onClick={addSearchedNameToWatchlist} disabled={loading} className="w-full py-3 bg-purple-600/80 hover:bg-purple-700 text-white rounded-xl font-bold text-xl flex items-center justify-center gap-2 mt-3 disabled:opacity-50">
-                <PlusIcon /> {loading ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
+            {!fullNameStatus && (
+              <button onClick={addSearchedNameToWatchlist} disabled={loadingWl} className="w-full py-3 bg-purple-600/80 hover:bg-purple-700 text-white rounded-xl font-bold text-xl flex items-center justify-center gap-2 mt-3 disabled:opacity-50">
+                <PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
               </button>
             )}
-            {!isOnWatchlist(buildFullName()) && (
-              <button onClick={saveSearchedNameToMemories} disabled={loading} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 mt-2 disabled:opacity-50">
-                <PlusIcon /> {loading ? 'Saving...' : 'Save "' + buildFullName() + '" to Memories'}
-              </button>
-            )}
-            <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center mt-2 flex items-center justify-center gap-2">
-              <EditIcon /> Search for another name
+            <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center mt-2">
+              Search for another name
             </button>
           </div>
         </div>
       );
     }
 
-    const isDeceased = profile && profile.deathDate;
-    const notFound = !profile || profile.notFound === true || (!profile.title && !profile.extract);
-    const hasSSdi = ssdiResults && ssdiResults.length > 0;
-    const showWikiBio = (!notFound) && (wikiMatchConfident || isDeceased);
-    const showBanner = showWikiBio || (!hasSSdi && notFound);
-    const bannerBg = isDeceased ? 'bg-gray-800' : (!notFound && wikiMatchConfident ? 'bg-green-700' : 'bg-blue-700');
-    const bannerText = isDeceased ? 'Passed Away' : (!notFound && wikiMatchConfident ? 'Likely Alive' : 'Not Found');
-
     return (
       <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
         {showBanner && <div className={'px-5 py-2 ' + bannerBg}>
           <span className="text-white font-black tracking-widest text-xl">{bannerText}</span>
-          {isDeceased && profile.deathDate && profile.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-3">Died: {profile.deathDate}</span>}
+          {isDeceased && profile.deathDate && profile.deathDate !== 'deceased' && <span className="text-white/80 text-sm ml-3">DOD: {profile.deathDate}</span>}
         </div>}
         <div className="bg-gray-900/70 p-4">
           {showWikiBio && (
@@ -1138,7 +1116,7 @@ function App() {
                 {profile.thumbnail ? <img src={profile.thumbnail} alt={profile.title} className="w-16 h-16 rounded-full object-cover border-2 border-purple-600/50 shrink-0" /> : <div className="w-16 h-16 rounded-full bg-purple-900/40 flex items-center justify-center shrink-0 text-2xl">?</div>}
                 <div className="flex-1">
                   <h2 className="text-white text-2xl font-bold mb-1">{profile.title}</h2>
-                  {profile.birthDate && <p className="text-purple-300 text-xl font-bold">Born: {profile.birthDate}</p>}
+                  {profile.birthDate && <p className="text-purple-300 text-xl font-bold">DOB: {profile.birthDate}</p>}
                   <p className="text-purple-400 text-xl italic mt-1">{profile.description}</p>
                 </div>
               </div>
@@ -1147,86 +1125,74 @@ function App() {
           )}
           {!notFound && !wikiMatchConfident && !isDeceased && !nw.middle && (
             <div className="mb-3 p-2 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-              <p className="text-yellow-300 text-sm">Wikipedia found a "{profile.title}" but details don't fully match your search. SSDI records may be a better fit.</p>
+              <p className="text-yellow-300 text-sm">Wikipedia found a "{profile.title}" but details don't fully match. SSDI records may be a better fit.</p>
             </div>
           )}
           {!isDeceased && noMiMatches && (
             <div className="mb-3 p-2 bg-yellow-900/20 border border-yellow-700/30 rounded-lg">
-              <p className="text-yellow-300 text-sm">No records found in SSDI with middle initial "{nw.middle}". This person may not be in SSDI, or their middle initial wasn't recorded.</p>
+              <p className="text-yellow-300 text-sm">No records found in SSDI with middle initial "{nw.middle}". Try searching without it.</p>
             </div>
           )}
           {!isDeceased && (
-            <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} middleFallback={watchlistCheck && watchlistCheck.middleFallback} noMiMatches={watchlistCheck && watchlistCheck.noMiMatches} />
+            <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
           )}
+
+          {/* ── Dead: one button only — Save to Memories ── */}
           {isDeceased && (
-            <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
-              <p className="text-gray-200 text-xl text-center">This person has passed away.{profile.deathDate && profile.deathDate !== 'deceased' ? ' Died: ' + profile.deathDate : ''}</p>
-            </div>
+            <>
+              <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
+                <p className="text-gray-200 text-xl text-center">This person has passed away.{profile.deathDate && profile.deathDate !== 'deceased' ? ' DOD: ' + profile.deathDate : ''}</p>
+              </div>
+              <div className="space-y-2 mt-2">
+                {profile && profile.title && (() => {
+                  var titleStatus = isOnWatchlist(profile.title);
+                  if (titleStatus) return <p className="text-green-400 text-xl text-center font-bold">Already in your {titleStatus}</p>;
+                  return (
+                    <button onClick={async () => {
+                      setLoadingMem(true);
+                      try {
+                        const token = localStorage.getItem('token');
+                        const deathYr = profile.deathDate ? (profile.deathDate.match(/\d{4}/) ? profile.deathDate.match(/\d{4}/)[0] : null) : null;
+                        const r = await fetch(API_BASE + '/watchlist', {
+                          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                          body: JSON.stringify({ name: profile.title, location: '', dob: '', is_deceased: true, death_year: deathYr })
+                        });
+                        if (!r.ok) throw new Error('Failed');
+                        await loadWatchlist(); clearWatchlistCheck(); setPage('memories');
+                      } catch(e) { alert('Error: ' + e.message); }
+                      finally { setLoadingMem(false); }
+                    }} disabled={loadingMem} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingMem ? 'Saving...' : 'Save "' + profile.title + '" to Memories'}
+                    </button>
+                  );
+                })()}
+                <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center">Search for another name</button>
+              </div>
+            </>
           )}
+
+          {/* ── Alive or not found: Watchlist primary, Memories secondary ── */}
           {!isDeceased && (
             <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
               {hasSSdi && <p className="text-gray-400 text-xl text-center">Tap a name above to add to your list, or:</p>}
-              {(() => {
-                var topResult = ssdiResults && ssdiResults[0];
-                var topByear = topResult && topResult.birth_date ? parseInt(topResult.birth_date.split('/').pop()) : null;
-                var topPassed = topResult && (!!(topResult.death_date) || (topByear && topByear < DECEASED_BIRTH_YEAR_THRESHOLD));
-                var allPassed = ssdiResults && ssdiResults.length > 0 && ssdiResults.every(function(res) {
-                  var by = res.birth_date ? parseInt(res.birth_date.split('/').pop()) : null;
-                  return !!(res.death_date) || (by && by < DECEASED_BIRTH_YEAR_THRESHOLD);
-                });
-                if (fullNameStatus) return <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>;
-                if ((topPassed || allPassed) && hasSSdi) return (
-                  <button onClick={saveSearchedNameToMemories} disabled={loading} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                    <PlusIcon /> {loading ? 'Saving...' : 'Save "' + buildFullName() + '" to Memories'}
-                  </button>
-                );
-                return (
-                  <>
-                    <button onClick={addSearchedNameToWatchlist} disabled={loading} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                      <PlusIcon /> {loading ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
+              {fullNameStatus
+                ? <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>
+                : <>
+                    <button onClick={addSearchedNameToWatchlist} disabled={loadingWl} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
                     </button>
-                    <button onClick={saveSearchedNameToMemories} disabled={loading} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 disabled:opacity-50">
-                      <PlusIcon /> {loading ? 'Saving...' : 'Save to Memories instead'}
+                    <button onClick={saveSearchedNameToMemories} disabled={loadingMem} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingMem ? 'Saving...' : 'Save to Memories instead'}
                     </button>
                   </>
-                );
-              })()}
-              <button onClick={() => { setWatchlistChecked(false); setWatchlistCheck(null); setSelectedDisambig(null); setSsdiPage(1); window.scrollTo(0,0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; }} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center flex items-center justify-center gap-2">
+              }
+              {!hasSSdi && notFound && (
+                <p className="text-gray-300 text-lg leading-relaxed text-center">We found nothing on {buildFullName()} at this time. Try adding a middle initial, suffix, or birth year. You can also add them to your Watchlist and we'll let you know if anything changes.</p>
+              )}
+              <button onClick={() => { setWatchlistChecked(false); setWatchlistCheck(null); setSelectedDisambig(null); setSsdiPage(1); window.scrollTo(0,0); }} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center flex items-center justify-center gap-2">
                 <EditIcon /> Edit Name
               </button>
               <button onClick={clearWatchlistCheck} className="w-full py-2 text-white/40 text-xl text-center">Search for another name</button>
-            </div>
-          )}
-          {isDeceased && (
-            <div className="space-y-2 mt-2">
-              {profile && profile.title && (() => {
-                var titleStatus = isOnWatchlist(profile.title);
-                if (titleStatus) return <p className="text-green-400 text-xl text-center font-bold">Already in your {titleStatus}</p>;
-                return (
-                  <button onClick={async () => {
-                    setLoading(true);
-                    try {
-                      const token = localStorage.getItem('token');
-                      const deathYr = profile.deathDate ? (profile.deathDate.match(/\d{4}/) ? profile.deathDate.match(/\d{4}/)[0] : null) : null;
-                      const r = await fetch(API_BASE + '/watchlist', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                        body: JSON.stringify({ name: profile.title, location: '', dob: '', is_deceased: true, death_year: deathYr })
-                      });
-                      if (!r.ok) throw new Error('Failed');
-                      await loadWatchlist(); clearWatchlistCheck(); setPage('search');
-                    } catch(e) { alert('Error saving to Memories: ' + e.message); }
-                    finally { setLoading(false); }
-                  }} disabled={loading} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                    <PlusIcon /> {loading ? 'Saving...' : 'Save to Memories'}
-                  </button>
-                );
-              })()}
-              {profile && profile.title && buildFullName() !== profile.title && !isOnWatchlist(buildFullName()) && (
-                <button onClick={addSearchedNameToWatchlist} disabled={loading} className="w-full py-3 bg-gray-600/50 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 disabled:opacity-50">
-                  <PlusIcon /> Save "{buildFullName()}" to Memories
-                </button>
-              )}
-              <button onClick={clearWatchlistCheck} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center">Search for another name</button>
             </div>
           )}
         </div>
@@ -1234,6 +1200,7 @@ function App() {
     );
   };
 
+  // ── FIX #5 #15: DOD label, Saved vs Passed Away, Save to Memories for living ──
   const WikiDrawer = () => {
     if (!drawerData) return null;
     const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear } = drawerData;
@@ -1256,10 +1223,9 @@ function App() {
               <>
                 {isMemory && (
                   <>
-                    {/* ── FIX: show Saved vs Passed Away based on deathYear ── */}
                     <div className={'px-4 py-3 rounded-xl mb-3 flex items-center gap-3 ' + (deathYear ? 'bg-gray-700' : 'bg-green-800')}>
                       <span className="text-white font-black text-xl">{deathYear ? 'Passed Away' : 'Saved'}</span>
-                      {deathYear && <span className="text-white/80 text-xl ml-auto">{deathYear}</span>}
+                      {deathYear && <span className="text-white/80 text-xl ml-auto">DOD: {deathYear}</span>}
                     </div>
                     {(() => {
                       var savedLower = name.trim().toLowerCase();
@@ -1277,7 +1243,7 @@ function App() {
                               {profile.thumbnail ? <img src={profile.thumbnail} alt={profile.title} className="w-16 h-16 rounded-full object-cover border-2 border-purple-600/50 shrink-0" /> : <div className="w-16 h-16 rounded-full bg-purple-900/40 flex items-center justify-center shrink-0 text-2xl">?</div>}
                               <div className="flex-1">
                                 <h2 className="text-white text-2xl font-bold mb-1">{profile.title}</h2>
-                                {profile.birthDate && <p className="text-purple-300 text-xl font-bold">Born: {profile.birthDate}</p>}
+                                {profile.birthDate && <p className="text-purple-300 text-xl font-bold">DOB: {profile.birthDate}</p>}
                                 {profile.description && <p className="text-purple-400 text-xl italic mt-1">{profile.description}</p>}
                               </div>
                             </div>
@@ -1297,7 +1263,7 @@ function App() {
                       <>
                         <div className={'px-4 py-3 rounded-xl mb-3 flex items-center gap-3 ' + (profile.deathDate ? 'bg-gray-700' : profile.isDisambiguation ? 'bg-yellow-600' : 'bg-green-700')}>
                           <span className="text-white font-black text-xl">{profile.deathDate ? 'Passed Away' : profile.isDisambiguation ? 'Multiple Matches' : 'Likely Alive'}</span>
-                          {profile.deathDate && <span className="text-white/80 text-xl ml-auto">{profile.deathDate !== 'deceased' ? 'Died: ' + profile.deathDate : 'Deceased'}</span>}
+                          {profile.deathDate && <span className="text-white/80 text-xl ml-auto">{profile.deathDate !== 'deceased' ? 'DOD: ' + profile.deathDate : 'Deceased'}</span>}
                         </div>
                         {newlyDeceased && (
                           <div className="p-3 bg-purple-900/60 border border-purple-600 rounded-xl mb-3">
@@ -1308,7 +1274,7 @@ function App() {
                           {profile.thumbnail ? <img src={profile.thumbnail} alt={profile.title} className="w-16 h-16 rounded-full object-cover border-2 border-purple-600/50 shrink-0" /> : <div className="w-16 h-16 rounded-full bg-purple-900/40 flex items-center justify-center shrink-0 text-2xl">?</div>}
                           <div className="flex-1">
                             <h2 className="text-white text-2xl font-bold mb-1">{profile.title}</h2>
-                            {profile.birthDate && <p className="text-purple-300 text-xl font-bold">Born: {profile.birthDate}</p>}
+                            {profile.birthDate && <p className="text-purple-300 text-xl font-bold">DOB: {profile.birthDate}</p>}
                             {!profile.isDisambiguation && <p className="text-purple-400 text-xl italic mt-1">{profile.description}</p>}
                           </div>
                         </div>
@@ -1316,35 +1282,48 @@ function App() {
                         {profile.isDisambiguation && <div className="p-3 bg-yellow-500/20 border border-yellow-400/30 rounded-xl mb-3"><p className="text-yellow-200 text-xl text-center">Multiple people share this name</p></div>}
                       </>
                     )}
-                    {(!profile || !profile.deathDate) && ssdiResults && ssdiResults.length > 0 ? <div className="mt-2 pt-3 border-t border-purple-900/30">
-                      <p className="text-purple-300 text-2xl font-bold mb-2">Possible matches in SSDI (thru 2014)</p>
-                      {ssdiHasMore && (
-                        <button onClick={() => loadMoreSsdi(name)} disabled={ssdiLoadingMore} className="w-full py-3 bg-gray-800/60 border border-purple-900/30 text-gray-300 rounded-lg text-xl mb-2 disabled:opacity-50">
-                          {ssdiLoadingMore ? 'Loading...' : 'Show 10 more \u2193'}
-                        </button>
-                      )}
-                      {ssdiResults.map((r, i) => {
-                        const rawScore = scoreResult(r, drawerFirst, drawerMI, drawerLast, '', '');
-                        const exactMatch = r.first_name && r.last_name && r.first_name.toUpperCase() === drawerFirst.toUpperCase() && r.last_name.toUpperCase() === drawerLast.toUpperCase();
-                        const score = (ssdiResults.length === 1 || exactMatch) ? 95 : rawScore;
-                        const conf = confidenceLabel(score);
-                        const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
-                        return (
-                          <div key={i} onClick={() => { setDrawerData(null); setSsdiDrawer(r); }} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-white text-2xl font-semibold underline decoration-dotted">{r.name}</p>
-                                {r.middle_name && <p className="text-gray-400 text-sm">Middle: {r.middle_name}</p>}
+                    {(!profile || !profile.deathDate) && ssdiResults && ssdiResults.length > 0 && (
+                      <div className="mt-2 pt-3 border-t border-purple-900/30">
+                        <p className="text-purple-300 text-2xl font-bold mb-2">Possible matches in SSDI (thru 2014)</p>
+                        {ssdiResults.map((r, i) => {
+                          const rawScore = scoreResult(r, drawerFirst, drawerMI, drawerLast, '', '');
+                          const exactMatch = r.first_name && r.last_name && r.first_name.toUpperCase() === drawerFirst.toUpperCase() && r.last_name.toUpperCase() === drawerLast.toUpperCase();
+                          const score = (ssdiResults.length === 1 || exactMatch) ? 95 : rawScore;
+                          const conf = confidenceLabel(score);
+                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
+                          return (
+                            <div key={i} onClick={() => { setDrawerData(null); setSsdiDrawer(r); }} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-white text-2xl font-semibold underline decoration-dotted">{r.name}</p>
+                                  {r.middle_name && <p className="text-gray-400 text-sm">Middle: {r.middle_name}</p>}
+                                </div>
+                                <span className={'text-base font-bold ml-2 shrink-0 ' + confColor}>{conf}</span>
                               </div>
-                              <span className={'text-base font-bold ml-2 shrink-0 ' + confColor}>{conf}</span>
+                              {r.birth_date && <p className="text-gray-400 text-sm">DOB: {r.birth_date}</p>}
+                              {r.death_date && <p className="text-gray-400 text-sm">DOD: {r.death_date}</p>}
                             </div>
-                            {r.birth_date && <p className="text-gray-400 text-sm">Born: {r.birth_date}</p>}
-                            {r.death_date && <p className="text-gray-400 text-sm">Died: {r.death_date}</p>}
-                            <p className="text-gray-500 text-sm">SSDI (thru 2014)</p>
-                          </div>
-                        );
-                      })}
-                    </div> : null}
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* ── FIX #15: Save to Memories for living watchlist entries ── */}
+                    {profile && !profile.deathDate && !profile.isDisambiguation && drawerData.watchlistId && (
+                      <button onClick={async () => {
+                        const token = localStorage.getItem('token');
+                        const alreadyMem = isOnWatchlist(name);
+                        if (alreadyMem === 'memories') { alert(name + ' is already in Memories!'); return; }
+                        try {
+                          await fetch(API_BASE + '/watchlist', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                            body: JSON.stringify({ name: name, location: '', dob: '', is_deceased: true, death_year: null })
+                          });
+                          await loadWatchlist(); setDrawerData(null); setPage('memories');
+                        } catch(e) { alert('Error: ' + e.message); }
+                      }} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 mt-3">
+                        <PlusIcon /> Save to Memories
+                      </button>
+                    )}
                   </>
                 )}
               </>
@@ -1363,23 +1342,21 @@ function App() {
           <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '88vw', height: '54vh', objectFit: 'contain', filter: 'brightness(1.6) drop-shadow(0 6px 24px rgba(124,58,237,0.8))' }} />
         </div>
         <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
-          <div style={{ width: '100%' }}>
-            <div className="bg-purple-950/80 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-600/40 space-y-3">
-              <div className="text-center">
-                <p className="text-white/50 text-xl mt-1">Free during beta</p>
-              </div>
-              <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
-              <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
-                <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60">{showPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
-              </div>
-              {backendWaking && <p className="text-white/60 text-xl text-center animate-pulse">Waking up the server...</p>}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => doAuth('login')} disabled={loading} className="py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl disabled:opacity-50 text-2xl">{loading ? '...' : 'Sign In'}</button>
-                <button onClick={() => doAuth('register')} disabled={loading} className="py-4 bg-purple-900/60 hover:bg-purple-800/80 text-white font-bold rounded-xl disabled:opacity-50 text-2xl border border-purple-400/60">{loading ? '...' : 'Register'}</button>
-              </div>
-              <p className="text-white/40 text-xl text-center">You'll stay signed in automatically</p>
+          <div className="bg-purple-950/80 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-600/40 space-y-3">
+            <div className="text-center">
+              <p className="text-white/50 text-xl mt-1">Free during beta</p>
             </div>
+            <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
+            <div className="relative">
+              <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
+              <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60">{showPassword ? <EyeOffIcon /> : <EyeIcon />}</button>
+            </div>
+            {backendWaking && <p className="text-white/60 text-xl text-center animate-pulse">Waking up the server...</p>}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => doAuth('login')} disabled={loading} className="py-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl disabled:opacity-50 text-2xl">{loading ? '...' : 'Sign In'}</button>
+              <button onClick={() => doAuth('register')} disabled={loading} className="py-4 bg-purple-900/60 hover:bg-purple-800/80 text-white font-bold rounded-xl disabled:opacity-50 text-2xl border border-purple-400/60">{loading ? '...' : 'Register'}</button>
+            </div>
+            <p className="text-white/40 text-xl text-center">You'll stay signed in automatically</p>
           </div>
         </div>
       </div>
@@ -1392,17 +1369,11 @@ function App() {
       <SsdiRecordDrawer />
       <div className={containerClass}>
 
+        {/* ── FIX #14 #22: updated subtitle, no search button ── */}
         {page === 'watchlist' && (
           <div className="space-y-3" style={{ paddingTop: watchlist.filter(w => !w.is_deceased).length > 0 ? '1rem' : PT }}>
             <div className={cardClass}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="w-10" />
-                <h2 className="text-4xl font-black text-white tracking-wide flex-1 text-center">Watchlist</h2>
-                <button onClick={() => { clearWatchlistCheck(); setPage('search'); }} className="flex flex-col items-center text-white hover:text-purple-400 transition-colors w-10">
-                  <SearchIcon /><span className="text-sm">Search</span>
-                </button>
-              </div>
-              <p className="text-gray-300 text-xl mb-3 text-center">Tap a name to check their status — we'll notify you when they pass</p>
+              <CardPageHeader title="Watchlist" subtitle="Touch a name to refresh their info" />
               {watchlist.filter(w => !w.is_deceased).length === 0 && (
                 <div className="py-6 text-center">
                   <p className="text-gray-300 text-xl leading-relaxed mb-2">No one on your watchlist yet.</p>
@@ -1413,8 +1384,7 @@ function App() {
             {watchlist.filter(w => !w.is_deceased).length > 0 && (
               <div className={cardClass + ' mt-3'}>
                 <h2 className="text-3xl font-bold mb-1 text-white text-center">Your Watchlist ({watchlist.filter(w => !w.is_deceased).length})</h2>
-                <p className="text-xl text-gray-400 mb-3 text-center">Tap a name to check their current status</p>
-                <div className="space-y-2">
+                <div className="space-y-2 mt-2">
                   {watchlist.filter(w => !w.is_deceased).map(w => (
                     <div key={w.id} className="p-4 rounded-lg border bg-gray-800/50 border-purple-900/20">
                       {editingId === w.id ? (
@@ -1466,9 +1436,9 @@ function App() {
               {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
               {!watchlistChecked ? (
                 <div className="space-y-3">
-                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} noAutoCorrect={true} />
-                  <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} noAutoCorrect={true} />
-                  <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} noAutoCorrect={true} />
+                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} />
+                  <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} />
+                  <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
                   <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
                   <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-4 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
                     <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
@@ -1482,35 +1452,31 @@ function App() {
           </div>
         )}
 
+        {/* ── FIX #12 #13: Memories redesign — no strikethrough, no View button, tap name ── */}
         {page === 'memories' && (
           <div className="space-y-3" style={{ paddingTop: "1rem" }}>
             <div className={cardClass}>
-              <CardPageHeader title="Memories" subtitle="People you have found who have passed" onHome={() => { clearWatchlistCheck(); setPage('search'); }} />
+              <CardPageHeader title="Memories" subtitle="People you have saved" />
               {watchlist.filter(w => w.is_deceased).length === 0 ? (
                 <div className="text-center py-6">
-                  <p className="text-gray-300 text-xl leading-relaxed">If the person you are looking for has passed, you can save them here for future review by touching their name.</p>
+                  <p className="text-gray-300 text-xl leading-relaxed">Search for a name and save them here for future reference.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-gray-400 text-lg text-center mb-1">Tap a name to see saved info</p>
                   {watchlist.filter(w => w.is_deceased).map(w => {
-                    // ── FIX: show Saved vs Passed Away based on death_year ──
                     const confirmedDeceased = !!(w.death_year);
-                    const statusText = confirmedDeceased
-                      ? ('Passed Away — ' + w.death_year)
-                      : 'Saved';
+                    const statusText = confirmedDeceased ? ('Passed Away — DOD: ' + w.death_year) : 'Saved';
                     return (
                       <div key={w.id} className="p-4 bg-gray-900/70 rounded-lg border border-gray-600/50">
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
                             <button onClick={() => openWatchlistDrawer(w)} className="text-left w-full">
-                              <h3 className={'font-semibold text-2xl underline decoration-dotted truncate ' + (confirmedDeceased ? 'text-gray-300 line-through' : 'text-white')}>{w.name}</h3>
+                              <h3 className="font-semibold text-2xl text-white underline decoration-dotted truncate">{w.name}</h3>
                             </button>
                             <span className="text-xl text-gray-400 font-bold">{statusText}</span>
                           </div>
-                          <div className="flex gap-2 ml-2 shrink-0">
-                            <button onClick={() => openWatchlistDrawer(w)} className="px-3 py-2 bg-purple-700/50 border border-purple-600/50 text-white rounded-lg text-xl font-bold">View</button>
-                            <button onClick={() => delWatch(w.id)} className="p-2 text-purple-500 hover:bg-purple-900/30 rounded-lg"><TrashIcon /></button>
-                          </div>
+                          <button onClick={() => delWatch(w.id)} className="p-2 text-purple-500 hover:bg-purple-900/30 rounded-lg ml-2 shrink-0"><TrashIcon /></button>
                         </div>
                       </div>
                     );
@@ -1521,14 +1487,15 @@ function App() {
           </div>
         )}
 
+        {/* ── FIX #17 #22: updated subtitle, no search button ── */}
         {page === 'notifications' && (
           <div className="space-y-3" style={{ paddingTop: "1rem" }}>
             <div className={cardClass}>
-              <CardPageHeader title="Alerts" subtitle="Status changes for people on your watchlist" onHome={() => { clearWatchlistCheck(); setPage('search'); }} />
+              <CardPageHeader title="Alerts" subtitle="New info about people on your Watchlist" />
               {notifications.length === 0 ? (
                 <div className="text-center py-4">
                   <p className="text-white font-bold text-2xl">No alerts yet</p>
-                  <p className="text-gray-200 text-xl mt-1">We'll alert you when someone on your watchlist passes away</p>
+                  <p className="text-gray-200 text-xl mt-1">We'll alert you when there is new info about someone on your watchlist</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1550,15 +1517,13 @@ function App() {
           </div>
         )}
 
+        {/* ── FIX #18 #19 #20 #22: new About copy, Keep explanation, disclaimer fix ── */}
         {page === 'about' && (
           <div className="space-y-4 pb-8" style={{ paddingTop: '1rem' }}>
-            <div className={cardClass + ' relative'}>
+            <div className={cardClass}>
               <div className="mb-3 pb-2 border-b border-purple-900/30 text-center">
                 <h2 className="text-4xl font-black text-white tracking-wide">About</h2>
                 <h2 className="text-4xl font-black text-white tracking-wide">Memory Watch</h2>
-                <button onClick={() => { clearWatchlistCheck(); setPage('search'); }} className="absolute right-3 top-3 flex flex-col items-center text-white hover:text-purple-400 transition-colors">
-                  <SearchIcon /><span className="text-sm">Search</span>
-                </button>
               </div>
               <p className="text-purple-300 italic text-xl text-center mb-3">v{APP_VERSION}</p>
               <div className="flex items-center gap-4 mb-4">
@@ -1582,16 +1547,30 @@ function App() {
               <div className="space-y-4">
                 <div className="flex gap-3 items-start">
                   <span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span>
-                  <div><p className="text-white text-xl font-semibold">Search</p><p className="text-gray-300 text-xl">Type a name to find out if someone has passed. We search Wikipedia and the SSDI, which is current through 2014.</p></div>
+                  <p className="text-gray-300 text-xl">Enter a name to find out if that person is still with us or not.</p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span>
-                  <div><p className="text-white text-xl font-semibold">Watchlist</p><p className="text-gray-300 text-xl">Add living people to your Watchlist and we'll notify you the moment they pass away.</p></div>
+                  <p className="text-gray-300 text-xl">If the name is not found, you can add it to your Watchlist to be alerted to any information published about them in Wikipedia or SSDI.</p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span>
-                  <div><p className="text-white text-xl font-semibold">Memories</p><p className="text-gray-300 text-xl">People you've confirmed have passed are saved here for future reference.</p></div>
+                  <p className="text-gray-300 text-xl">Should you find the person is no longer with us, you can add their name to a Memories list for future reference.</p>
                 </div>
+                <div className="flex gap-3 items-start">
+                  <span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span>
+                  <p className="text-gray-300 text-xl">We plan to add a range of different more immediate sources in the future. Your use of this app is FREE. Future updates may require a one-time fee. No subscriptions. No games.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={cardClass}>
+              <h3 className="text-white text-2xl font-bold mb-3">About Alerts</h3>
+              <div className="space-y-2 text-gray-200 text-xl leading-relaxed">
+                <p>When we find new information about someone on your Watchlist, you'll receive an Alert.</p>
+                <p><strong className="text-white">View</strong> — opens their profile so you can review the information.</p>
+                <p><strong className="text-white">Keep</strong> — saves this person to your Memories list and removes them from your Watchlist.</p>
+                <p><strong className="text-white">Dismiss</strong> — removes the alert and the person from your Watchlist.</p>
               </div>
             </div>
 
@@ -1604,7 +1583,7 @@ function App() {
                 <p><strong className="text-white">Data Sources:</strong> Search results are powered by Wikipedia and the Social Security Death Index.</p>
                 <p><strong className="text-white">Your Rights:</strong> You may delete your account and all data at any time.</p>
                 <p><strong className="text-white">Minor Protection:</strong> Memory Watch is not intended for searching individuals under 18 years of age.</p>
-                <p><strong className="text-white">Disclaimer:</strong> Information is provided for research purposes only. Memory Watch makes no guarantee of accuracy. Do not rely on this service as confirmation of death.</p>
+                <p><strong className="text-white">Disclaimer:</strong> Information is provided for research purposes only. Memory Watch makes no guarantee of accuracy.</p>
                 <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl">hello@memorywatch.app</a>
               </div>
             </div>
