@@ -53,7 +53,7 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
 const SSDI_CACHE_KEY = 'mw_ssdi_cache';
 
@@ -61,7 +61,6 @@ const isPhone = window.innerWidth < 500;
 const isTablet = window.innerWidth >= 500 && window.innerWidth < 1024;
 const PT = isPhone ? '41vh' : isTablet ? '46vh' : '44vh';
 
-// ── SSDI localStorage cache helpers ──
 const getSsdiCache = () => {
   try { return JSON.parse(localStorage.getItem(SSDI_CACHE_KEY) || '{}'); } catch(e) { return {}; }
 };
@@ -111,6 +110,23 @@ const addInitialPeriods = (name) => {
     }
     return word;
   }).join(' ');
+};
+
+// ── FIX #4: fuzzy name match for Liza Minnelli-style typos ──
+const fuzzyMatch = (a, b) => {
+  if (!a || !b) return false;
+  a = a.toLowerCase().trim();
+  b = b.toLowerCase().trim();
+  if (a === b) return true;
+  if (a.startsWith(b) || b.startsWith(a)) return true;
+  const longer = a.length >= b.length ? a : b;
+  const shorter = a.length < b.length ? a : b;
+  if (longer.length === 0) return true;
+  let matches = 0;
+  for (let i = 0; i < shorter.length; i++) {
+    if (longer.indexOf(shorter[i]) !== -1) matches++;
+  }
+  return (matches / longer.length) >= 0.8;
 };
 
 const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix) => {
@@ -262,7 +278,6 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   return hasDeathInBrackets || hasYearsInDescription || yearRangeInDesc || isPastTense || diedInFirstSentence || diedInDescription;
 }
 
-// ── Cached SSDI record display block (reused in drawer) ──
 const SsdiRecordBlock = ({ r }) => {
   if (!r) return null;
   return (
@@ -514,7 +529,6 @@ function App() {
     } catch(e) { return { isDisambiguation: false, notFound: true }; }
   };
 
-  // ── FIX: openWatchlistDrawer falls back to SSDI cache when wiki not found ──
   const openWatchlistDrawer = async (watchItem) => {
     const isMemory = !!(watchItem.is_deceased);
     setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: null, ssdiResults: [], loading: true, newlyDeceased: false, isMemory: isMemory, deathYear: watchItem.death_year || null, cachedSsdi: null, location: watchItem.location || null });
@@ -527,7 +541,6 @@ function App() {
     const nameWithPeriods = addInitialPeriods(toTitleCase(watchItem.name));
     if (isMemory) {
       const profile = await fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true }));
-      // ── FIX: if wiki not found, pull from localStorage SSDI cache ──
       const cachedSsdi = (!profile || profile.notFound) ? getCachedSsdi(watchItem.name) : null;
       setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: profile || { notFound: true }, ssdiResults: [], loading: false, newlyDeceased: false, isMemory: true, deathYear: watchItem.death_year || null, cachedSsdi: cachedSsdi, location: watchItem.location || null });
       setDrawerRefreshing(false);
@@ -562,9 +575,7 @@ function App() {
     setSsdiLoadingMore(true);
     try {
       const token = localStorage.getItem('token');
-      const r = await fetch(API_BASE + '/ssdi/search?name=' + encodeURIComponent(watchItemName) + '&offset=' + ssdiOffset, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      });
+      const r = await fetch(API_BASE + '/ssdi/search?name=' + encodeURIComponent(watchItemName) + '&offset=' + ssdiOffset, { headers: { 'Authorization': 'Bearer ' + token } });
       if (r.ok) {
         const data = await r.json();
         const newResults = data.results || [];
@@ -603,7 +614,6 @@ function App() {
     setSsdiLoadingMore(false);
   };
 
-  // ── FIX: cache full SSDI record when saving ──
   const addFromSsdi = async (r, forceMemories) => {
     const fullName = r.name;
     var alreadyIn = isOnWatchlist(fullName);
@@ -615,16 +625,13 @@ function App() {
       const birthYearInt = r.birth_date ? parseInt(r.birth_date.split('/').pop()) : null;
       const isDeceased = forceMemories || !!(r.death_date) || (birthYearInt && birthYearInt < DECEASED_BIRTH_YEAR_THRESHOLD);
       const deathYear = r.death_date ? r.death_date.split('/').pop() : null;
-      // cache the full SSDI record
       cacheSsdiRecord(fullName, Object.assign({}, r, { location: nw.location || r.location || null }));
       const resp = await fetch(API_BASE + '/watchlist', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify({ name: fullName, location: nw.location || '', dob: birthYear, is_deceased: isDeceased, death_year: deathYear })
       });
       if (!resp.ok) throw new Error('Failed');
-      await loadWatchlist();
-      clearWatchlistCheck();
-      setSsdiDrawer(null);
+      await loadWatchlist(); clearWatchlistCheck(); setSsdiDrawer(null);
       setPage(isDeceased ? 'memories' : 'watchlist');
     } catch(e) { alert('Error: ' + e.message); }
     finally { setLoading(false); }
@@ -656,8 +663,7 @@ function App() {
   const checkWatch = async () => {
     const name = toTitleCase((nw.name || '').trim().replace(/\s+/g, ' '));
     if (!name || name.length < 2) { alert('Please enter a name to search.'); return; }
-    setSsdiDrawer(null);
-    setSsdiPage(1);
+    setSsdiDrawer(null); setSsdiPage(1);
     setWatchlistChecking(true); setWatchlistCheck(null); setWatchlistChecked(false);
     try {
       const token = localStorage.getItem('token');
@@ -750,8 +756,7 @@ function App() {
     const fullName = buildFullName() || watchlistCheck.name;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
-    // cache search params as minimal record
-    cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear ? nw.birthYear : null, location: nw.location || null, middle_name: nw.middle || null, suffix: nw.suffix || null });
+    cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear || null, location: nw.location || null, middle_name: nw.middle || null, suffix: nw.suffix || null });
     setLoadingWl(true);
     try {
       const token = localStorage.getItem('token');
@@ -770,7 +775,6 @@ function App() {
     if (!fullName) return;
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
-    // cache search params
     const topSsdi = watchlistCheck && watchlistCheck.ssdiResults && watchlistCheck.ssdiResults[0];
     if (topSsdi) {
       cacheSsdiRecord(fullName, Object.assign({}, topSsdi, { location: nw.location || null }));
@@ -821,7 +825,8 @@ function App() {
   };
 
   const unreadCount = notifications.length;
-  const iClass = "w-full px-4 py-4 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
+  // ── FIX #3: tighter input padding for 5-field search form ──
+  const iClass = "w-full px-4 py-3 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
   const cardClass = "bg-black/35 rounded-2xl p-4 shadow-lg border border-purple-900/30 backdrop-blur-sm";
   const containerClass = (page === 'about') ? 'w-full max-w-3xl mx-auto px-3' : 'w-full px-3';
 
@@ -1026,13 +1031,17 @@ function App() {
       matches: Array.isArray(rawProfile.matches) ? rawProfile.matches : [],
     } : { isDisambiguation: false, notFound: true, title: '', extract: '', matches: [] };
 
+    // ── FIX #4: fuzzy match on first and last name for typo tolerance ──
     const wikiMatchConfident = (() => {
       if (!profile || profile.notFound || profile.isDisambiguation || !profile.title) return false;
-      const titleLower = (profile.title || '').toLowerCase();
-      if (!titleLower.includes(searchFirst.toLowerCase())) return false;
-      if (!titleLower.includes(searchLast.toLowerCase())) return false;
+      const titleWords = profile.title.toLowerCase().split(/\s+/);
+      const titleFirst = titleWords[0] || '';
+      const titleLast = titleWords[titleWords.length - 1] || '';
+      if (!fuzzyMatch(searchFirst, titleFirst)) return false;
+      if (!fuzzyMatch(searchLast, titleLast)) return false;
       if (nw.middle) {
         const mid = nw.middle.trim().toLowerCase().replace(/\./g, '');
+        const titleLower = profile.title.toLowerCase();
         if (mid.length > 0 && !titleLower.includes(' ' + mid.charAt(0)) && !titleLower.includes(mid)) return false;
       }
       if (nw.birthYear && profile.birthDate && !profile.birthDate.includes(nw.birthYear)) return false;
@@ -1227,7 +1236,6 @@ function App() {
     );
   };
 
-  // ── FIX: WikiDrawer shows cached SSDI when wiki not found for memory entries ──
   const WikiDrawer = () => {
     if (!drawerData) return null;
     const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear, cachedSsdi, location } = drawerData;
@@ -1262,7 +1270,7 @@ function App() {
                       var wikiLast = wikiLower.split(/\s+/).slice(-1)[0] || '';
                       var savedFirst = savedParts[0] || '';
                       var savedLast = savedParts[savedParts.length - 1] || '';
-                      var wikiMatches = savedFirst === wikiFirst && savedLast === wikiLast;
+                      var wikiMatches = fuzzyMatch(savedFirst, wikiFirst) && fuzzyMatch(savedLast, wikiLast);
                       if (!noWikiInfo && profile && profile.title && wikiMatches) {
                         return (
                           <>
@@ -1279,7 +1287,6 @@ function App() {
                           </>
                         );
                       }
-                      // ── FIX: fall back to cached SSDI record ──
                       if (cachedSsdi) {
                         return (
                           <>
@@ -1383,7 +1390,7 @@ function App() {
     return (
       <div style={{ minHeight: '100dvh', width: '100%', backgroundColor: POSTER_STYLE.backgroundColor, backgroundImage: POSTER_STYLE.backgroundImage, backgroundSize: POSTER_STYLE.backgroundSize, backgroundPosition: POSTER_STYLE.backgroundPosition, backgroundRepeat: POSTER_STYLE.backgroundRepeat, backgroundAttachment: POSTER_STYLE.backgroundAttachment, display: 'flex', flexDirection: 'column', alignItems: 'stretch', paddingBottom: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 58vh' }}>
-          <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '88vw', height: '54vh', objectFit: 'contain', filter: 'brightness(1.6) drop-shadow(0 6px 24px rgba(124,58,237,0.8))' }} />
+          <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: '88vw', height: '54vh', objectFit: 'contain', filter: 'brightness(2.0) drop-shadow(0 6px 24px rgba(124,58,237,0.8))' }} />
         </div>
         <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
           <div className="bg-purple-950/80 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-600/40 space-y-3">
@@ -1470,24 +1477,26 @@ function App() {
 
         {page === 'search' && (
           <div className="space-y-3" style={{ paddingTop: PT }}>
-            <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.75rem', paddingBottom: '0', pointerEvents: 'none' }}>
-              <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 4rem)', maxWidth: '90%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.8)) brightness(1.6)' }} />
-              <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.5rem' }}>Whatever happened to...</p>
+            {/* ── FIX #1 #2: logo bigger and brighter ── */}
+            <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.5rem', paddingBottom: '0', pointerEvents: 'none' }}>
+              <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2.5rem)', maxWidth: '95%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.9)) brightness(2.0)' }} />
+              <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.4rem' }}>Whatever happened to...</p>
             </div>
-            <div className={cardClass}>
+            {/* ── FIX #3: scrollable search form — overflow-y-auto, gap-2 ── */}
+            <div className={cardClass} style={{ overflowY: 'auto', maxHeight: 'calc(100dvh - ' + PT + ' - 6rem)' }}>
               <div className="mb-1 pb-1 border-b border-purple-900/30" />
               {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
               {!watchlistChecked ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} />
                   <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} />
                   <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
                   <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
                   <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
-                  <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-4 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
+                  <button onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
                     <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
                   </button>
-                  <p className="text-gray-200 text-lg text-center pt-1" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>Search Wikipedia and SSDI</p>
+                  <p className="text-gray-200 text-lg text-center" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>Search Wikipedia and SSDI</p>
                 </div>
               ) : (
                 <WatchlistCheckCard />
