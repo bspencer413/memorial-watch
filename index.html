@@ -53,7 +53,7 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.6';
+const APP_VERSION = '1.0.8';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
 const SSDI_CACHE_KEY = 'mw_ssdi_cache';
 
@@ -97,6 +97,31 @@ const getCachedSsdi = (name) => {
   } catch(e) { return null; }
 };
 
+const getCachedSsdiFlexible = (name) => {
+  if (!name) return null;
+  var hit = getCachedSsdi(name);
+  if (hit) return hit;
+  var normalized = normalizeForWiki(name);
+  if (normalized && normalized.toLowerCase() !== name.trim().toLowerCase()) {
+    hit = getCachedSsdi(normalized);
+    if (hit) return hit;
+  }
+  try {
+    var cache = getSsdiCache();
+    var parts = name.trim().toLowerCase().split(/\s+/);
+    var nameFirst = parts[0] || '';
+    var nameLast = parts[parts.length - 1] || '';
+    var keys = Object.keys(cache);
+    for (var i = 0; i < keys.length; i++) {
+      var kparts = keys[i].split(/\s+/);
+      var kFirst = kparts[0] || '';
+      var kLast = kparts[kparts.length - 1] || '';
+      if (fuzzyMatch(nameFirst, kFirst) && fuzzyMatch(nameLast, kLast)) return cache[keys[i]];
+    }
+  } catch(e) {}
+  return null;
+};
+
 const toTitleCase = (str) => {
   if (!str) return str;
   return str
@@ -122,26 +147,21 @@ const normalizeForWiki = (name) => {
 const addInitialPeriods = (name) => {
   if (!name) return name;
   return name.trim().split(/\s+/).map((word, i, arr) => {
-    if (word.length === 1 && /[A-Za-z]/.test(word) && i > 0 && i < arr.length - 1) {
-      return word + '.';
-    }
+    if (word.length === 1 && /[A-Za-z]/.test(word) && i > 0 && i < arr.length - 1) return word + '.';
     return word;
   }).join(' ');
 };
 
 const fuzzyMatch = (a, b) => {
   if (!a || !b) return false;
-  a = a.toLowerCase().trim();
-  b = b.toLowerCase().trim();
+  a = a.toLowerCase().trim(); b = b.toLowerCase().trim();
   if (a === b) return true;
   if (a.startsWith(b) || b.startsWith(a)) return true;
   const longer = a.length >= b.length ? a : b;
   const shorter = a.length < b.length ? a : b;
   if (longer.length === 0) return true;
   let matches = 0;
-  for (let i = 0; i < shorter.length; i++) {
-    if (longer.indexOf(shorter[i]) !== -1) matches++;
-  }
+  for (let i = 0; i < shorter.length; i++) { if (longer.indexOf(shorter[i]) !== -1) matches++; }
   return (matches / longer.length) >= 0.8;
 };
 
@@ -165,9 +185,7 @@ const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthY
   if (sMiddle && rMiddle) {
     if (rMiddle === sMiddle || rMiddle.startsWith(sMiddle) || sMiddle.startsWith(rMiddle)) score += 30;
   }
-  if (searchBirthYear && rDob) {
-    if (rDob.includes(searchBirthYear)) score += 15;
-  }
+  if (searchBirthYear && rDob) { if (rDob.includes(searchBirthYear)) score += 15; }
   if (sSuffix && rSuffix && rSuffix === sSuffix) score += 5;
   return score;
 };
@@ -233,8 +251,7 @@ const EyeOffIcon = () => (
 const ClearableInput = ({ value, onChange, onBlur, onKeyPress, placeholder, type='text', maxLength, inputClass, numeric }) => (
   <div className="relative">
     <input type={numeric ? 'tel' : type} placeholder={placeholder} value={value} onChange={onChange} onBlur={onBlur} onKeyPress={onKeyPress} maxLength={maxLength} className={inputClass + ' pr-10'}
-      autoCorrect="off" autoCapitalize="words" autoComplete="off" spellCheck="false"
-    />
+      autoCorrect="off" autoCapitalize="words" autoComplete="off" spellCheck="false" />
     {value && value.length > 0 && (
       <button onClick={() => onChange({ target: { value: '' } })} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xl font-bold leading-none" type="button">X</button>
     )}
@@ -308,8 +325,7 @@ const SsdiRecordBlock = ({ r }) => {
     </div>
   );
 };
-
-function App() {
+  function App() {
   const [page, setPage] = useState('login');
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
@@ -385,7 +401,6 @@ function App() {
     }
   };
 
-  // FIX #1 & #2 — keepAlert: accept notifName as fallback, guard duplicates, always land in Memories
   const keepAlert = async (notifId, watchlistId, notifName) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
@@ -394,22 +409,13 @@ function App() {
       try {
         const wItem = watchlist.find(w => w.id === watchlistId);
         const itemName = (wItem && wItem.name) || notifName || '';
-        // delete the current watchlist entry
         await fetch(API_BASE + '/watchlist/' + watchlistId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
         if (itemName) {
-          // guard: only add if not already in memories
           const alreadyIn = isOnWatchlist(itemName);
           if (alreadyIn !== 'memories') {
             await fetch(API_BASE + '/watchlist', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-              body: JSON.stringify({
-                name: itemName,
-                location: (wItem && wItem.location) || '',
-                dob: (wItem && wItem.dob) || '',
-                is_deceased: true,
-                death_year: (wItem && wItem.death_year) || null
-              })
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+              body: JSON.stringify({ name: itemName, location: (wItem && wItem.location) || '', dob: (wItem && wItem.dob) || '', is_deceased: true, death_year: (wItem && wItem.death_year) || null })
             });
           }
         }
@@ -466,12 +472,9 @@ function App() {
   const clearSearch = () => { setWikiProfile(null); setResults([]); setSearched(false); setSelectedDisambig(null); };
 
   const clearWatchlistCheck = () => {
-    setWatchlistCheck(null);
-    setWatchlistChecked(false);
+    setWatchlistCheck(null); setWatchlistChecked(false);
     setNw({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
-    setSelectedDisambig(null);
-    setSsdiPage(1);
-    setSsdiDrawer(null);
+    setSelectedDisambig(null); setSsdiPage(1); setSsdiDrawer(null);
   };
 
   const fetchWikiAction = async (name) => {
@@ -558,25 +561,21 @@ function App() {
   };
 
   const openWatchlistDrawer = async (watchItem) => {
-    // FIX #3 — treat 1 (Postgres boolean) same as true
     const isMemory = watchItem.is_deceased === true || watchItem.is_deceased === 1;
-    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: null, ssdiResults: [], loading: true, newlyDeceased: false, isMemory: isMemory, deathYear: watchItem.death_year || null, cachedSsdi: null, location: watchItem.location || null });
+    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: null, ssdiResults: [], loading: true, newlyDeceased: false, isMemory: isMemory, deathYear: watchItem.death_year || null, dob: watchItem.dob || null, cachedSsdi: null, location: watchItem.location || null });
     setSsdiOffset(0); setSsdiHasMore(false); setSsdiAllResults([]);
     setDrawerRefreshing(true);
     const token = localStorage.getItem('token');
-
-    // FIX #3 — never call refresh on Memory items; the refresh endpoint can flip is_deceased back to false
     if (!isMemory) {
       fetch(API_BASE + '/watchlist/' + watchItem.id + '/refresh', { headers: { 'Authorization': 'Bearer ' + token } })
         .then(r => { if (r.ok) r.json().then(data => { if (data.newly_deceased) { loadWatchlist(); loadNotifications(); } else { loadWatchlist(); } }); })
         .catch(() => {});
     }
-
     const nameWithPeriods = addInitialPeriods(toTitleCase(watchItem.name));
     if (isMemory) {
       const profile = await fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true }));
-      const cachedSsdi = (!profile || profile.notFound) ? getCachedSsdi(watchItem.name) : null;
-      setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: profile || { notFound: true }, ssdiResults: [], loading: false, newlyDeceased: false, isMemory: true, deathYear: watchItem.death_year || null, cachedSsdi: cachedSsdi, location: watchItem.location || null });
+      const cachedSsdi = getCachedSsdiFlexible(watchItem.name);
+      setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: profile || { notFound: true }, ssdiResults: [], loading: false, newlyDeceased: false, isMemory: true, deathYear: watchItem.death_year || null, dob: watchItem.dob || null, cachedSsdi: cachedSsdi, location: watchItem.location || null });
       setDrawerRefreshing(false);
       return;
     }
@@ -601,7 +600,7 @@ function App() {
     setSsdiAllResults(ssdiResults);
     setSsdiHasMore(ssdi.has_more || false);
     setSsdiOffset(ssdiResults.length);
-    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null, cachedSsdi: null, location: watchItem.location || null });
+    setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null, dob: watchItem.dob || null, cachedSsdi: null, location: watchItem.location || null });
     setDrawerRefreshing(false);
   };
 
@@ -614,9 +613,7 @@ function App() {
         const data = await r.json();
         const newResults = data.results || [];
         const combined = ssdiAllResults.concat(newResults);
-        setSsdiAllResults(combined);
-        setSsdiHasMore(data.has_more || false);
-        setSsdiOffset(combined.length);
+        setSsdiAllResults(combined); setSsdiHasMore(data.has_more || false); setSsdiOffset(combined.length);
         setDrawerData(prev => Object.assign({}, prev, { ssdiResults: combined }));
       }
     } catch(e) { console.log('loadMoreSsdi error:', e); }
@@ -726,23 +723,15 @@ function App() {
             const fb = new URLSearchParams({ name: ssdiName });
             fb.append('middle_name', nw.middle.trim());
             const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) {
-              const fbData = await fbResp.json();
-              if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; }
-            }
+            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
           } catch(e) {}
         } else if (!hasMi && hasDob) {
           try {
             const fb = new URLSearchParams({ name: ssdiName });
             const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) {
-              const fbData = await fbResp.json();
-              if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; }
-            }
+            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
           } catch(e) {}
-        } else if (hasMi && !hasDob) {
-          noMiMatches = true;
-        }
+        } else if (hasMi && !hasDob) { noMiMatches = true; }
       }
       const ssdiResults = ssdiRaw.map(r => Object.assign({}, r, { _score: scoreResult(r, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) })).sort((a, b) => {
         if (b._score !== a._score) return b._score - a._score;
@@ -751,9 +740,7 @@ function App() {
         return aYear - bYear;
       });
       if (ssdiResults.length === 1) ssdiResults[0]._score = 95;
-      const profile = wikiResp.status === 'fulfilled'
-        ? (wikiResp.value || { isDisambiguation: false, notFound: true })
-        : { isDisambiguation: false, notFound: true };
+      const profile = wikiResp.status === 'fulfilled' ? (wikiResp.value || { isDisambiguation: false, notFound: true }) : { isDisambiguation: false, notFound: true };
       setWatchlistCheck({ profile, name, ssdiResults, ssdiHasMore: ssdiApiHasMore, birthYearFallback, noMiMatches });
       setWatchlistChecked(true);
     } catch (error) {
@@ -811,11 +798,7 @@ function App() {
     var alreadyIn = isOnWatchlist(fullName);
     if (alreadyIn) { alert(fullName + ' is already in your ' + alreadyIn + '!'); return; }
     const topSsdi = watchlistCheck && watchlistCheck.ssdiResults && watchlistCheck.ssdiResults[0];
-    if (topSsdi) {
-      cacheSsdiRecord(fullName, topSsdi);
-    } else {
-      cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear || null, middle_name: nw.middle || null, suffix: nw.suffix || null });
-    }
+    if (topSsdi) { cacheSsdiRecord(fullName, topSsdi); } else { cacheSsdiRecord(fullName, { name: fullName, birth_date: nw.birthYear || null, middle_name: nw.middle || null, suffix: nw.suffix || null }); }
     setLoadingMem(true);
     try {
       const token = localStorage.getItem('token');
@@ -909,7 +892,6 @@ function App() {
         <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
           <div className="px-5 py-3 bg-yellow-600 text-center"><p className="text-white font-black text-3xl">Multiple Matches</p><p className="text-white/80 text-xl">Several people share this name</p></div>
           <div className="bg-gray-900/70 p-4">
-            <p className="text-gray-300 text-xl mb-1">Several people share this name.</p>
             <div className="space-y-2">
               {(profile.matches || []).map((m, i) => (
                 <button key={i} onClick={() => setSelectedDisambig(m)} className="w-full p-3 bg-gray-800/60 border border-purple-900/30 rounded-xl text-left hover:bg-gray-700/60 transition-colors">
@@ -966,18 +948,10 @@ function App() {
                     setLoading(true);
                     try {
                       const token = localStorage.getItem('token');
-                      const found = watchlist.find(w => {
-                        const stored = normalizeForWiki(w.name).toLowerCase();
-                        const check = normalizeForWiki(r.name).toLowerCase();
-                        return stored === check || w.name.toLowerCase() === r.name.toLowerCase();
-                      });
+                      const found = watchlist.find(w => { const stored = normalizeForWiki(w.name).toLowerCase(); const check = normalizeForWiki(r.name).toLowerCase(); return stored === check || w.name.toLowerCase() === r.name.toLowerCase(); });
                       if (found) await fetch(API_BASE + '/watchlist/' + found.id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
-                      const deathYear = extractYear(r.death_date);
                       cacheSsdiRecord(r.name, r);
-                      await fetch(API_BASE + '/watchlist', {
-                        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                        body: JSON.stringify({ name: r.name, location: nw.location || '', dob: extractYear(r.birth_date) || '', is_deceased: true, death_year: deathYear })
-                      });
+                      await fetch(API_BASE + '/watchlist', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ name: r.name, location: nw.location || '', dob: extractYear(r.birth_date) || '', is_deceased: true, death_year: extractYear(r.death_date) }) });
                       await loadWatchlist(); setSsdiDrawer(null); setPage('memories');
                     } catch(e) { alert('Error: ' + e.message); }
                     finally { setLoading(false); }
@@ -1119,11 +1093,7 @@ function App() {
                       setLoadingMem(true);
                       try {
                         const token = localStorage.getItem('token');
-                        const deathYr = extractYear(selectedDisambig.deathDate);
-                        const r = await fetch(API_BASE + '/watchlist', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                          body: JSON.stringify({ name: selectedDisambig.title, location: '', dob: '', is_deceased: true, death_year: deathYr })
-                        });
+                        const r = await fetch(API_BASE + '/watchlist', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ name: selectedDisambig.title, location: '', dob: '', is_deceased: true, death_year: extractYear(selectedDisambig.deathDate) }) });
                         if (!r.ok) throw new Error('Failed');
                         await loadWatchlist(); clearWatchlistCheck(); setPage('memories');
                       } catch(e) { alert('Error: ' + e.message); }
@@ -1150,7 +1120,6 @@ function App() {
         <div className="rounded-2xl overflow-hidden border border-purple-800 shadow-lg">
           <div className="px-5 py-3 bg-yellow-600 text-center"><p className="text-white font-black text-3xl">Multiple Matches</p><p className="text-white/80 text-xl">Several people share this name</p></div>
           <div className="bg-gray-900/70 p-4">
-            <p className="text-gray-300 text-xl mb-1">Several people share this name.</p>
             <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
             <div className="space-y-2">
               {(profile.matches || []).map((m, i) => (
@@ -1209,9 +1178,7 @@ function App() {
               <p className="text-yellow-300 text-sm">No records found in SSDI with middle initial "{nw.middle}". Try searching without it.</p>
             </div>
           )}
-          {!isDeceased && (
-            <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />
-          )}
+          {!isDeceased && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
           {isDeceased && (
             <>
               <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
@@ -1226,11 +1193,7 @@ function App() {
                       setLoadingMem(true);
                       try {
                         const token = localStorage.getItem('token');
-                        const deathYr = extractYear(profile.deathDate);
-                        const r = await fetch(API_BASE + '/watchlist', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                          body: JSON.stringify({ name: profile.title, location: '', dob: '', is_deceased: true, death_year: deathYr })
-                        });
+                        const r = await fetch(API_BASE + '/watchlist', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ name: profile.title, location: '', dob: '', is_deceased: true, death_year: extractYear(profile.deathDate) }) });
                         if (!r.ok) throw new Error('Failed');
                         await loadWatchlist(); clearWatchlistCheck(); setPage('memories');
                       } catch(e) { alert('Error: ' + e.message); }
@@ -1258,9 +1221,7 @@ function App() {
                     </button>
                   </>
               }
-              {!hasSSdi && notFound && (
-                <p className="text-gray-300 text-lg leading-relaxed text-center">We found nothing on {buildFullName()} at this time. Try adding a middle initial, suffix, or birth year. You can also add them to your Watchlist and we'll let you know if anything changes.</p>
-              )}
+              {!hasSSdi && notFound && <p className="text-gray-300 text-lg leading-relaxed text-center">We found nothing on {buildFullName()} at this time. Try adding a middle initial, suffix, or birth year. You can also add them to your Watchlist and we'll let you know if anything changes.</p>}
               <button onClick={() => { setWatchlistChecked(false); setWatchlistCheck(null); setSelectedDisambig(null); setSsdiPage(1); window.scrollTo(0,0); }} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center flex items-center justify-center gap-2">
                 <EditIcon /> Edit Name
               </button>
@@ -1274,7 +1235,7 @@ function App() {
 
   const WikiDrawer = () => {
     if (!drawerData) return null;
-    const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear, cachedSsdi, location } = drawerData;
+    const { name, profile, ssdiResults, loading: drawerLoading, newlyDeceased, isMemory, deathYear, dob, cachedSsdi, location } = drawerData;
     const noWikiInfo = !drawerLoading && (!profile || profile.notFound || (!profile.title && !profile.extract));
     const nameParts = name.trim().split(/\s+/);
     const drawerFirst = nameParts[0] || '';
@@ -1328,15 +1289,19 @@ function App() {
                           <>
                             <SsdiRecordBlock r={cachedSsdi} />
                             <div className="p-2 bg-purple-900/10 border border-purple-800/20 rounded-xl mb-3">
-                              <p className="text-purple-300 text-sm">Saved from SSDI records (through 2014). No Wikipedia entry found for this person.</p>
+                              <p className="text-purple-300 text-sm">Saved from SSDI records (through 2014). No Wikipedia entry found.</p>
                             </div>
                           </>
                         );
                       }
                       return (
-                        <div className="text-center py-3 mb-3">
-                          <p className="text-gray-400 text-xl">No additional information found for this person.</p>
-                          {deathYear && <p className="text-gray-300 text-xl mt-2">DOD: {deathYear}</p>}
+                        <div className="bg-gray-800/60 rounded-xl p-3 border border-purple-900/30 mb-3">
+                          <p className="text-white font-bold text-xl mb-1">{name}</p>
+                          {dob && <p className="text-gray-300 text-xl">DOB: {dob}</p>}
+                          {deathYear && <p className="text-gray-300 text-xl">DOD: {deathYear}</p>}
+                          {location && <p className="text-gray-300 text-xl">Location: {location}</p>}
+                          {!dob && !deathYear && !location && <p className="text-gray-400 text-xl mt-1">No additional details on file.</p>}
+                          <p className="text-gray-500 text-sm mt-2">No Wikipedia or SSDI record found.</p>
                         </div>
                       );
                     })()}
@@ -1397,20 +1362,14 @@ function App() {
                         })}
                       </div>
                     )}
-                    {/* FIX #3 — "Save to Memories" button: full isOnWatchlist guard, no auto-navigation */}
                     {drawerData.watchlistId && (() => {
                       var alreadyIn = isOnWatchlist(name);
-                      if (alreadyIn === 'memories') return (
-                        <p className="text-green-400 text-xl text-center font-bold mt-3">Already in your Memories</p>
-                      );
+                      if (alreadyIn === 'memories') return <p className="text-green-400 text-xl text-center font-bold mt-3">Already in your Memories</p>;
                       if (alreadyIn === 'watchlist') return (
                         <button onClick={async () => {
                           const token = localStorage.getItem('token');
                           try {
-                            await fetch(API_BASE + '/watchlist', {
-                              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                              body: JSON.stringify({ name: name, location: location || '', dob: '', is_deceased: true, death_year: null })
-                            });
+                            await fetch(API_BASE + '/watchlist', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ name: name, location: location || '', dob: '', is_deceased: true, death_year: null }) });
                             await loadWatchlist(); setDrawerData(null); setPage('memories');
                           } catch(e) { alert('Error: ' + e.message); }
                         }} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 mt-3">
@@ -1438,9 +1397,7 @@ function App() {
         </div>
         <div style={{ paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
           <div className="bg-purple-950/80 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-purple-600/40 space-y-3">
-            <div className="text-center">
-              <p className="text-white/50 text-xl mt-1">Free during beta</p>
-            </div>
+            <div className="text-center"><p className="text-white/50 text-xl mt-1">Free during beta</p></div>
             <input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
             <div className="relative">
               <input type={showPassword ? 'text' : 'password'} placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && doAuth('login')} className="w-full px-4 py-3 rounded-xl bg-white/15 border border-white/30 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 text-xl" />
@@ -1501,9 +1458,7 @@ function App() {
                               <h3 className="font-semibold text-2xl text-white hover:text-purple-300 underline decoration-dotted truncate">{w.name}</h3>
                             </button>
                             {w.location && <p className="text-xl text-gray-400">{w.location}</p>}
-                            <div className="flex items-center gap-1 mt-1">
-                              <CheckIcon /><span className="text-xl text-green-400">Following</span>
-                            </div>
+                            <div className="flex items-center gap-1 mt-1"><CheckIcon /><span className="text-xl text-green-400">Following</span></div>
                           </div>
                           <div className="flex gap-2 ml-2 shrink-0">
                             <button onClick={() => { setEditingId(w.id); setEditingName(w.name); }} className="p-2 text-purple-400 hover:bg-purple-900/30 rounded-lg"><EditIcon /></button>
@@ -1535,12 +1490,7 @@ function App() {
                   <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
                   <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
                   <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
-                  <button
-                    id="mw-search-btn"
-                    onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }}
-                    onClick={checkWatch}
-                    disabled={watchlistChecking}
-                    className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
+                  <button id="mw-search-btn" onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }} onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
                     <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
                   </button>
                   <p className="text-gray-200 text-lg text-center" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>Search Wikipedia and SSDI</p>
@@ -1605,9 +1555,12 @@ function App() {
                       <p className="text-gray-500 text-xl mt-1 mb-2">{new Date(n.created_at).toLocaleDateString()}</p>
                       <div className="flex gap-2">
                         <button onClick={() => viewAlert(n)} className="flex-1 py-2 bg-purple-700/50 border border-purple-600/50 text-white rounded-lg text-xl font-bold">View</button>
-                        {/* FIX #1 — pass n.name as 3rd arg to keepAlert */}
-                        <button onClick={() => keepAlert(n.id, n.watchlist_id, n.name)} className="flex-1 py-2 bg-gray-700/50 border border-gray-600/50 text-gray-300 rounded-lg text-base">Keep</button>
-                        <button onClick={() => dismissAlert(n.id, n.watchlist_id)} className="flex-1 py-2 bg-transparent border border-purple-900/50 text-purple-400 rounded-lg text-base">Dismiss</button>
+                        <button onClick={() => keepAlert(n.id, n.watchlist_id, n.name)} className="flex-1 py-2 bg-gray-700/50 border border-gray-600/50 text-gray-200 rounded-lg text-base font-bold">
+                          Keep<span className="block text-gray-400 text-xs font-normal leading-tight">Save to Memories</span>
+                        </button>
+                        <button onClick={() => dismissAlert(n.id, n.watchlist_id)} className="flex-1 py-2 bg-transparent border border-purple-900/50 text-purple-400 rounded-lg text-base">
+                          Dismiss<span className="block text-purple-600 text-xs leading-tight">Remove All</span>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1640,39 +1593,24 @@ function App() {
                 <p>No games, no search-and-pay, no ads and no more search engine frustration.</p>
               </div>
             </div>
-
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-4 text-center">How it works</h3>
               <div className="space-y-4">
-                <div className="flex gap-3 items-start">
-                  <span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span>
-                  <p className="text-gray-300 text-xl">Enter a name to find out if that person is still with us or not.</p>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span>
-                  <p className="text-gray-300 text-xl">If the name is not found, you can add it to your Watchlist to be alerted to any information published about them in Wikipedia or SSDI.</p>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span>
-                  <p className="text-gray-300 text-xl">Should you find the person is no longer with us, you can add their name to a Memories list for future reference.</p>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span>
-                  <p className="text-gray-300 text-xl">We plan to add a range of different more immediate sources in the future. Your use of this app is FREE. Future updates may require a one-time fee. No subscriptions. No games.</p>
-                </div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span><p className="text-gray-300 text-xl">Enter a name to find out if that person is still with us or not.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span><p className="text-gray-300 text-xl">If the name is not found, you can add it to your Watchlist to be alerted to any information published about them in Wikipedia or SSDI.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span><p className="text-gray-300 text-xl">Should you find the person is no longer with us, you can add their name to a Memories list for future reference.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span><p className="text-gray-300 text-xl">We plan to add a range of different more immediate sources in the future. Your use of this app is FREE. Future updates may require a one-time fee. No subscriptions. No games.</p></div>
               </div>
             </div>
-
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-3">About Alerts</h3>
               <div className="space-y-2 text-gray-200 text-xl leading-relaxed">
                 <p>When we find new information about someone on your Watchlist, you'll receive an Alert.</p>
-                <p><strong className="text-white">View</strong> — opens their profile so you can review the information.</p>
-                <p><strong className="text-white">Keep</strong> — saves this person to your Memories list and removes them from your Watchlist.</p>
-                <p><strong className="text-white">Dismiss</strong> — removes the alert and the person from your Watchlist.</p>
+                <p><strong className="text-white">View</strong> — opens their profile with the latest information.</p>
+                <p><strong className="text-white">Keep</strong> — saves this person to your Memories and removes them from your Watchlist.</p>
+                <p><strong className="text-white">Dismiss</strong> — completely removes this person and the alert.</p>
               </div>
             </div>
-
             <div className={cardClass}>
               <h3 className="font-bold text-white mb-1 text-2xl">Privacy Policy</h3>
               <p className="text-gray-400 text-xl mb-3">Last updated: March 2026</p>
@@ -1686,7 +1624,6 @@ function App() {
                 <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl">hello@memorywatch.app</a>
               </div>
             </div>
-
             <div className="px-1 space-y-3 pb-2">
               <div className="p-3 bg-black/30 rounded-xl"><p className="font-medium text-gray-200 text-xl text-center">{user && user.email}</p></div>
               <button onClick={doLogout} className="w-full py-4 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-2xl font-bold">Sign Out</button>
