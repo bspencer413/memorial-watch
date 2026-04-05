@@ -404,12 +404,18 @@ const SsdiRecordBlock = ({ r }) => {
   const keepAlert = async (notifId, watchlistId, notifName) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
-    try { await fetch(API_BASE + '/notifications/' + notifId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); } catch(e) {}
+    // test alerts have no backend record — skip the DELETE if it's a test id
+    var isTest = String(notifId).indexOf('test-') === 0;
+    if (!isTest) {
+      try { await fetch(API_BASE + '/notifications/' + notifId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); } catch(e) {}
+    }
     if (watchlistId) {
       try {
         const wItem = watchlist.find(w => w.id === watchlistId);
         const itemName = (wItem && wItem.name) || notifName || '';
-        await fetch(API_BASE + '/watchlist/' + watchlistId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        if (!isTest) {
+          await fetch(API_BASE + '/watchlist/' + watchlistId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } });
+        }
         if (itemName) {
           const alreadyIn = isOnWatchlist(itemName);
           if (alreadyIn !== 'memories') {
@@ -425,10 +431,37 @@ const SsdiRecordBlock = ({ r }) => {
     }
   };
 
+  const dismissAlert2 = async (notifId, watchlistId) => {
+    var isTest = String(notifId).indexOf('test-') === 0;
+    const token = localStorage.getItem('token');
+    setNotifications(prev => prev.filter(n => n.id !== notifId));
+    if (!isTest) {
+      try { await fetch(API_BASE + '/notifications/' + notifId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); } catch(e) {}
+      if (watchlistId) {
+        try { await fetch(API_BASE + '/watchlist/' + watchlistId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); await loadWatchlist(); } catch(e) {}
+      }
+    }
+  };
+
   const viewAlert = (n) => {
     const wItem = watchlist.find(w => w.id === n.watchlist_id);
     if (wItem) { openWatchlistDrawer(wItem); }
     else { openWatchlistDrawer({ name: n.name, id: n.watchlist_id }); }
+  };
+
+  // TEST ALERT — injects a synthetic notification using first Watchlist person
+  const injectTestAlert = () => {
+    const target = watchlist.find(w => !(w.is_deceased === true || w.is_deceased === 1));
+    if (!target) { alert('Add someone to your Watchlist first — the test alert needs a real Watchlist entry to work with.'); return; }
+    const fakeNotif = {
+      id: 'test-' + Date.now(),
+      name: target.name,
+      watchlist_id: target.id,
+      message: 'Test alert — Wikipedia shows updated information about this person.',
+      created_at: new Date().toISOString()
+    };
+    setNotifications(prev => [fakeNotif].concat(prev));
+    setPage('notifications');
   };
 
   const doAuth = async (authMode) => {
@@ -1558,7 +1591,7 @@ const SsdiRecordBlock = ({ r }) => {
                         <button onClick={() => keepAlert(n.id, n.watchlist_id, n.name)} className="flex-1 py-2 bg-gray-700/50 border border-gray-600/50 text-gray-200 rounded-lg text-base font-bold">
                           Keep<span className="block text-gray-400 text-xs font-normal leading-tight">Save to Memories</span>
                         </button>
-                        <button onClick={() => dismissAlert(n.id, n.watchlist_id)} className="flex-1 py-2 bg-transparent border border-purple-900/50 text-purple-400 rounded-lg text-base">
+                        <button onClick={() => dismissAlert2(n.id, n.watchlist_id)} className="flex-1 py-2 bg-transparent border border-purple-900/50 text-purple-400 rounded-lg text-base">
                           Dismiss<span className="block text-purple-600 text-xs leading-tight">Remove All</span>
                         </button>
                       </div>
@@ -1642,6 +1675,8 @@ const SsdiRecordBlock = ({ r }) => {
                 </div>
               )}
             </div>
+            {/* Test Alert button — hidden in plain sight near version line */}
+            <button onClick={injectTestAlert} className="w-full py-2 text-gray-600 text-sm text-center">Test Alert</button>
             <p className="text-white/30 text-center text-sm pb-4">v{APP_VERSION}</p>
           </div>
         )}
