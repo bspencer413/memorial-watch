@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#7C3AED">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Memory Watch">
   <title>Memory Watch</title>
   <meta name="description" content="Memory Watch — A dignified way to find out if someone has passed. Add anyone to your watchlist and get notified when they pass away. Search friends, family, colleagues and celebrities.">
   <meta name="keywords" content="memory watch, death watchlist, obituary alert, death notification, passed away notification, Legacy obituary, Wikipedia deaths, deceased alert, in memoriam">
@@ -192,7 +193,7 @@ const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthY
 
 const confidenceLabel = (score) => {
   if (score >= 90) return 'Probable Match';
-  if (score >= 60) return 'Possible Match';
+  if (score >= 60) return 'Potential Record Match';
   return 'Partial Match';
 };
 
@@ -325,7 +326,8 @@ const SsdiRecordBlock = ({ r }) => {
     </div>
   );
 };
-  function App() {
+
+function App() {
   const [page, setPage] = useState('login');
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
@@ -404,7 +406,6 @@ const SsdiRecordBlock = ({ r }) => {
   const keepAlert = async (notifId, watchlistId, notifName) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
-    // test alerts have no backend record — skip the DELETE if it's a test id
     var isTest = String(notifId).indexOf('test-') === 0;
     if (!isTest) {
       try { await fetch(API_BASE + '/notifications/' + notifId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); } catch(e) {}
@@ -449,7 +450,6 @@ const SsdiRecordBlock = ({ r }) => {
     else { openWatchlistDrawer({ name: n.name, id: n.watchlist_id }); }
   };
 
-  // TEST ALERT — injects a synthetic notification using first Watchlist person
   const injectTestAlert = () => {
     const target = watchlist.find(w => !(w.is_deceased === true || w.is_deceased === 1));
     if (!target) { alert('Add someone to your Watchlist first — the test alert needs a real Watchlist entry to work with.'); return; }
@@ -910,6 +910,7 @@ const SsdiRecordBlock = ({ r }) => {
             </div>
           )}
           <div className="p-2 bg-purple-900/20 border border-purple-800/20 rounded-xl">
+            <p className="text-gray-400 text-sm mb-1">Based on publicly available sources.</p>
             <p className="text-purple-200 text-sm">Data provided by Wikipedia. Memory Watch donates a portion of revenues to the Wikimedia Foundation.</p>
           </div>
         </div>
@@ -989,7 +990,7 @@ const SsdiRecordBlock = ({ r }) => {
                     } catch(e) { alert('Error: ' + e.message); }
                     finally { setLoading(false); }
                   }} disabled={loading} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                    <PlusIcon /> {loading ? 'Moving...' : 'Move to Memories'}
+                    <PlusIcon /> {loading ? 'Saving...' : 'Save as Memory'}
                   </button>
                 </div>
               );
@@ -1032,7 +1033,7 @@ const SsdiRecordBlock = ({ r }) => {
         {visibleResults.map((r, i) => {
           const score = r._score !== undefined ? r._score : 50;
           const conf = confidenceLabel(score);
-          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
+          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Record Match' ? 'text-yellow-400' : 'text-gray-400';
           return (
             <div key={i} onClick={() => setSsdiDrawer(r)} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
               <div className="flex items-start justify-between">
@@ -1333,7 +1334,7 @@ const SsdiRecordBlock = ({ r }) => {
                           {dob && <p className="text-gray-300 text-xl">DOB: {dob}</p>}
                           {deathYear && <p className="text-gray-300 text-xl">DOD: {deathYear}</p>}
                           {location && <p className="text-gray-300 text-xl">Location: {location}</p>}
-                          {!dob && !deathYear && !location && <p className="text-gray-400 text-xl mt-1">No additional details on file.</p>}
+                          {!dob && !deathYear && !location && <p className="text-gray-400 text-xl mt-1">No additional information available at this time.</p>}
                           <p className="text-gray-500 text-sm mt-2">No Wikipedia or SSDI record found.</p>
                         </div>
                       );
@@ -1343,7 +1344,7 @@ const SsdiRecordBlock = ({ r }) => {
                 {!isMemory && (
                   <>
                     {noWikiInfo && (!ssdiResults || ssdiResults.length === 0) ? (
-                      <div className="text-center py-3 mb-3"><p className="text-gray-400 text-xl">No public records found. Monitoring for changes.</p></div>
+                      <div className="text-center py-3 mb-3"><p className="text-gray-400 text-xl">No public records found. Watching for new information.</p></div>
                     ) : noWikiInfo ? null : profile && (
                       <>
                         <div className={'px-4 py-3 rounded-xl mb-3 text-center ' + (profile.deathDate ? 'bg-gray-700' : profile.isDisambiguation ? 'bg-yellow-600' : 'bg-green-700')}>
@@ -1377,7 +1378,7 @@ const SsdiRecordBlock = ({ r }) => {
                           const exactMatch = r.first_name && r.last_name && r.first_name.toUpperCase() === drawerFirst.toUpperCase() && r.last_name.toUpperCase() === drawerLast.toUpperCase();
                           const score = (ssdiResults.length === 1 || exactMatch) ? 95 : rawScore;
                           const conf = confidenceLabel(score);
-                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
+                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Record Match' ? 'text-yellow-400' : 'text-gray-400';
                           return (
                             <div key={i} onClick={() => { setDrawerData(null); setSsdiDrawer(r); }} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
                               <div className="flex items-start justify-between">
@@ -1512,6 +1513,7 @@ const SsdiRecordBlock = ({ r }) => {
             <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.5rem', paddingBottom: '0', pointerEvents: 'none' }}>
               <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2.5rem)', maxWidth: '95%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.9)) brightness(2.0)' }} />
               <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.4rem' }}>Whatever happened to...</p>
+              <p className="text-purple-200 text-center" style={{ fontSize: isPhone ? '1.1rem' : '1.3rem', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginTop: '0.2rem' }}>Find out if they're still with us</p>
             </div>
             <div className={cardClass} style={{ overflowY: 'auto', maxHeight: 'calc(100dvh - ' + PT + ' - 6rem)' }}>
               <div className="mb-1 pb-1 border-b border-purple-900/30" />
@@ -1675,7 +1677,6 @@ const SsdiRecordBlock = ({ r }) => {
                 </div>
               )}
             </div>
-            {/* Test Alert button — hidden in plain sight near version line */}
             <button onClick={injectTestAlert} className="w-full py-2 text-gray-600 text-sm text-center">Test Alert</button>
             <p className="text-white/30 text-center text-sm pb-4">v{APP_VERSION}</p>
           </div>
