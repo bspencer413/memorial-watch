@@ -166,6 +166,12 @@ const fuzzyMatch = (a, b) => {
   return (matches / longer.length) >= 0.8;
 };
 
+const parseBirthYear = (birth_date) => {
+  if (!birth_date) return 9999;
+  var yr = parseInt(extractYear(birth_date) || '0');
+  return yr > 0 ? yr : 9999;
+};
+
 const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix) => {
   let score = 0;
   const rFirst = (result.first_name || '').toUpperCase();
@@ -347,6 +353,7 @@ function App() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [nw, setNw] = useState({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
+  const [showMoreFields, setShowMoreFields] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [showDangerZone, setShowDangerZone] = useState(false);
@@ -507,6 +514,7 @@ function App() {
   const clearWatchlistCheck = () => {
     setWatchlistCheck(null); setWatchlistChecked(false);
     setNw({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
+    setShowMoreFields(false);
     setSelectedDisambig(null); setSsdiPage(1); setSsdiDrawer(null);
   };
 
@@ -629,7 +637,7 @@ function App() {
     ]);
     const wikiProfile = profile.status === 'fulfilled' ? (profile.value || { notFound: true }) : { notFound: true };
     const ssdi = ssdiData.status === 'fulfilled' ? ssdiData.value : { results: [], has_more: false };
-    const ssdiResults = ssdi.results || [];
+    const ssdiResults = (ssdi.results || []).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
     setSsdiAllResults(ssdiResults);
     setSsdiHasMore(ssdi.has_more || false);
     setSsdiOffset(ssdiResults.length);
@@ -645,7 +653,7 @@ function App() {
       if (r.ok) {
         const data = await r.json();
         const newResults = data.results || [];
-        const combined = ssdiAllResults.concat(newResults);
+        const combined = ssdiAllResults.concat(newResults).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
         setSsdiAllResults(combined); setSsdiHasMore(data.has_more || false); setSsdiOffset(combined.length);
         setDrawerData(prev => Object.assign({}, prev, { ssdiResults: combined }));
       }
@@ -670,7 +678,10 @@ function App() {
         const scored = (data.results || []).map(function(rec) {
           return Object.assign({}, rec, { _score: scoreResult(rec, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) });
         });
-        const combined = watchlistCheck.ssdiResults.concat(scored);
+        const combined = watchlistCheck.ssdiResults.concat(scored).slice().sort((a, b) => {
+          if (b._score !== a._score) return b._score - a._score;
+          return parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date);
+        });
         setWatchlistCheck(Object.assign({}, watchlistCheck, { ssdiResults: combined, ssdiHasMore: data.has_more || false }));
         setSsdiPage(function(p) { return p + 1; });
       }
@@ -768,9 +779,7 @@ function App() {
       }
       const ssdiResults = ssdiRaw.map(r => Object.assign({}, r, { _score: scoreResult(r, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) })).sort((a, b) => {
         if (b._score !== a._score) return b._score - a._score;
-        const aYear = a.birth_date ? parseInt(a.birth_date.split('/').pop()) : 9999;
-        const bYear = b.birth_date ? parseInt(b.birth_date.split('/').pop()) : 9999;
-        return aYear - bYear;
+        return parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date);
       });
       if (ssdiResults.length === 1) ssdiResults[0]._score = 95;
       const profile = wikiResp.status === 'fulfilled' ? (wikiResp.value || { isDisambiguation: false, notFound: true }) : { isDisambiguation: false, notFound: true };
@@ -877,7 +886,6 @@ function App() {
   const iClass = "w-full px-4 py-3 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
   const cardClass = "bg-black/35 rounded-2xl p-4 shadow-lg border border-purple-900/30 backdrop-blur-sm";
   const containerClass = (page === 'about') ? 'w-full max-w-3xl mx-auto px-3' : 'w-full px-3';
-
   const SingleProfileCard = ({ profile, showAddButton, onBack }) => {
     if (!profile || !profile.title) return null;
     const alreadyWatching = isOnWatchlist(profile.title);
@@ -1513,7 +1521,7 @@ function App() {
             <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.5rem', paddingBottom: '0', pointerEvents: 'none' }}>
               <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2.5rem)', maxWidth: '95%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.9)) brightness(2.0)' }} />
               <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.4rem' }}>Whatever happened to...</p>
-              <p className="text-purple-200 text-center" style={{ fontSize: isPhone ? '1.1rem' : '1.3rem', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginTop: '0.2rem' }}>Find out if they're still with us</p>
+              <p className="text-purple-200 text-center" style={{ fontSize: isPhone ? '1.0rem' : '1.2rem', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginTop: '0.2rem' }}>Search public records to see if they're still with us</p>
             </div>
             <div className={cardClass} style={{ overflowY: 'auto', maxHeight: 'calc(100dvh - ' + PT + ' - 6rem)' }}>
               <div className="mb-1 pb-1 border-b border-purple-900/30" />
@@ -1521,14 +1529,21 @@ function App() {
               {!watchlistChecked ? (
                 <div className="space-y-2">
                   <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} />
-                  <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} />
-                  <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
-                  <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
-                  <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
+                  {!showMoreFields && (
+                    <button onClick={() => setShowMoreFields(true)} className="w-full text-purple-400 text-xl text-center py-1">Add more details (optional)</button>
+                  )}
+                  {showMoreFields && (
+                    <>
+                      <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle name or initial (optional)" inputClass={iClass} />
+                      <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
+                      <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth year (optional)" maxLength={4} inputClass={iClass} numeric={true} />
+                      <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
+                    </>
+                  )}
                   <button id="mw-search-btn" onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }} onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
-                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
+                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Find Out'}
                   </button>
-                  <p className="text-gray-200 text-lg text-center" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>Search Wikipedia and SSDI</p>
+                  <p className="text-gray-400 text-sm text-center">Results are based on publicly available records such as Wikipedia and public databases.</p>
                 </div>
               ) : (
                 <WatchlistCheckCard />
