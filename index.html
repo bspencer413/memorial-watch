@@ -1555,14 +1555,14 @@ function App() {
               {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
               {!watchlistChecked ? (
                 <div className="space-y-2">
-                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} />
+                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name " inputClass={iClass} />
                   {!showMoreFields && (
                     <button onClick={() => setShowMoreFields(true)} className="w-full text-purple-400 text-xl text-center py-1">Add more details (optional)</button>
                   )}
                   {showMoreFields && (
                     <>
                       <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle name or initial (optional)" inputClass={iClass} />
-                      <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
+                      <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., III, MD" inputClass={iClass} />
                       <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth year (optional)" maxLength={4} inputClass={iClass} numeric={true} />
                       <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
                     </>
