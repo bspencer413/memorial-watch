@@ -54,7 +54,7 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
 const SSDI_CACHE_KEY = 'mw_ssdi_cache';
 
@@ -199,7 +199,7 @@ const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthY
 
 const confidenceLabel = (score) => {
   if (score >= 90) return 'Probable Match';
-  if (score >= 60) return 'Potential Record Match';
+  if (score >= 60) return 'Potential Match';
   return 'Partial Match';
 };
 
@@ -620,27 +620,26 @@ function App() {
       setDrawerRefreshing(false);
       return;
     }
-    const [profile, ssdiData] = await Promise.allSettled([
-      fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true })),
-      (() => {
-        var nameParts = watchItem.name.trim().split(/\s+/);
-        var drawerFirst = nameParts[0] || '';
-        var drawerLast = nameParts[nameParts.length - 1] || '';
-        var ssdiSearchName = drawerFirst === drawerLast ? drawerFirst : (drawerFirst + ' ' + drawerLast).trim();
-        var drawerMI = nameParts.length >= 3 ? nameParts.slice(1, -1).join(' ') : '';
-        var ssdiUrl = API_BASE + '/ssdi/search?name=' + encodeURIComponent(ssdiSearchName) + '&offset=0';
-        if (drawerMI) ssdiUrl += '&middle_name=' + encodeURIComponent(drawerMI);
-        return fetch(ssdiUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+    const wikiProfile = await fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true })) || { notFound: true };
+    var ssdiResults = [];
+    if (watchItem.dob) {
+      var nameParts2 = watchItem.name.trim().split(/\s+/);
+      var drawerFirst2 = nameParts2[0] || '';
+      var drawerLast2 = nameParts2[nameParts2.length - 1] || '';
+      var ssdiSearchName2 = drawerFirst2 === drawerLast2 ? drawerFirst2 : (drawerFirst2 + ' ' + drawerLast2).trim();
+      var drawerMI2 = nameParts2.length >= 3 ? nameParts2.slice(1, -1).join(' ') : '';
+      var ssdiUrl2 = API_BASE + '/ssdi/search?name=' + encodeURIComponent(ssdiSearchName2) + '&offset=0';
+      if (drawerMI2) ssdiUrl2 += '&middle_name=' + encodeURIComponent(drawerMI2);
+      try {
+        const ssdiResp2 = await fetch(ssdiUrl2, { headers: { 'Authorization': 'Bearer ' + token } })
           .then(r => r.ok ? r.json() : { results: [], has_more: false })
           .catch(() => ({ results: [], has_more: false }));
-      })()
-    ]);
-    const wikiProfile = profile.status === 'fulfilled' ? (profile.value || { notFound: true }) : { notFound: true };
-    const ssdi = ssdiData.status === 'fulfilled' ? ssdiData.value : { results: [], has_more: false };
-    const ssdiResults = (ssdi.results || []).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
+        ssdiResults = (ssdiResp2.results || []).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
+        setSsdiHasMore(ssdiResp2.has_more || false);
+        setSsdiOffset(ssdiResults.length);
+      } catch(e) {}
+    }
     setSsdiAllResults(ssdiResults);
-    setSsdiHasMore(ssdi.has_more || false);
-    setSsdiOffset(ssdiResults.length);
     setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null, dob: watchItem.dob || null, cachedSsdi: null, location: watchItem.location || null });
     setDrawerRefreshing(false);
   };
@@ -749,40 +748,45 @@ function App() {
       const params = new URLSearchParams({ name: ssdiName });
       if (nw.birthYear) params.append('birth_year', nw.birthYear);
       if (nw.middle) params.append('middle_name', nw.middle.trim());
-      const [ssdiResp, wikiResp] = await Promise.allSettled([
-        fetch(API_BASE + '/ssdi/search?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(r => r.ok ? r.json() : { results: [], has_more: false })
-          .catch(() => ({ results: [], has_more: false })),
-        fetchWikiProfile(name).catch(() => ({ isDisambiguation: false, notFound: true }))
-      ]);
-      var ssdiRaw = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.results || []) : [];
-      var ssdiApiHasMore = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.has_more || false) : false;
+      var ssdiRaw = [];
+      var ssdiApiHasMore = false;
       var birthYearFallback = false;
       var noMiMatches = false;
       var hasMi = !!(nw.middle && nw.middle.trim());
       var hasDob = !!(nw.birthYear && nw.birthYear.trim());
-      if (ssdiRaw.length === 0) {
-        if (hasMi && hasDob) {
-          try {
-            const fb = new URLSearchParams({ name: ssdiName });
-            fb.append('middle_name', nw.middle.trim());
-            const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
-          } catch(e) {}
-        } else if (!hasMi && hasDob) {
-          try {
-            const fb = new URLSearchParams({ name: ssdiName });
-            const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
-          } catch(e) {}
-        } else if (hasMi && !hasDob) { noMiMatches = true; }
+      const wikiResult = await fetchWikiProfile(name).catch(() => ({ isDisambiguation: false, notFound: true }));
+      const profile = wikiResult || { isDisambiguation: false, notFound: true };
+      const isWikiDeceased = !!(profile && profile.deathDate);
+      if (!isWikiDeceased && (hasMi || hasDob)) {
+        try {
+          const ssdiResp = await fetch(API_BASE + '/ssdi/search?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(r => r.ok ? r.json() : { results: [], has_more: false })
+            .catch(() => ({ results: [], has_more: false }));
+          ssdiRaw = ssdiResp.results || [];
+          ssdiApiHasMore = ssdiResp.has_more || false;
+        } catch(e) {}
+        if (ssdiRaw.length === 0) {
+          if (hasMi && hasDob) {
+            try {
+              const fb = new URLSearchParams({ name: ssdiName });
+              fb.append('middle_name', nw.middle.trim());
+              const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
+              if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
+            } catch(e) {}
+          } else if (!hasMi && hasDob) {
+            try {
+              const fb = new URLSearchParams({ name: ssdiName });
+              const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
+              if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
+            } catch(e) {}
+          } else if (hasMi && !hasDob) { noMiMatches = true; }
+        }
       }
       const ssdiResults = ssdiRaw.map(r => Object.assign({}, r, { _score: scoreResult(r, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) })).sort((a, b) => {
         if (b._score !== a._score) return b._score - a._score;
         return parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date);
       });
       if (ssdiResults.length === 1) ssdiResults[0]._score = 95;
-      const profile = wikiResp.status === 'fulfilled' ? (wikiResp.value || { isDisambiguation: false, notFound: true }) : { isDisambiguation: false, notFound: true };
       setWatchlistCheck({ profile, name, ssdiResults, ssdiHasMore: ssdiApiHasMore, birthYearFallback, noMiMatches });
       setWatchlistChecked(true);
     } catch (error) {
@@ -1041,7 +1045,7 @@ function App() {
         {visibleResults.map((r, i) => {
           const score = r._score !== undefined ? r._score : 50;
           const conf = confidenceLabel(score);
-          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Record Match' ? 'text-yellow-400' : 'text-gray-400';
+          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Match' ? 'text-yellow-400' : 'text-gray-400';
           return (
             <div key={i} onClick={() => setSsdiDrawer(r)} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
               <div className="flex items-start justify-between">
@@ -1386,7 +1390,7 @@ function App() {
                           const exactMatch = r.first_name && r.last_name && r.first_name.toUpperCase() === drawerFirst.toUpperCase() && r.last_name.toUpperCase() === drawerLast.toUpperCase();
                           const score = (ssdiResults.length === 1 || exactMatch) ? 95 : rawScore;
                           const conf = confidenceLabel(score);
-                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Record Match' ? 'text-yellow-400' : 'text-gray-400';
+                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Match' ? 'text-yellow-400' : 'text-gray-400';
                           return (
                             <div key={i} onClick={() => { setDrawerData(null); setSsdiDrawer(r); }} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
                               <div className="flex items-start justify-between">
