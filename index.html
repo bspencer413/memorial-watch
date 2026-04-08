@@ -1106,6 +1106,7 @@ function App() {
     const ssdiDeceased = !!(topSsdiResult && topSsdiResult.death_date) ||
       !!(topSsdiResult && topSsdiResult.birth_date && parseInt(extractYear(topSsdiResult.birth_date)||'0') > 0 && parseInt(extractYear(topSsdiResult.birth_date)||'0') < DECEASED_BIRTH_YEAR_THRESHOLD);
     const isDeceased = (profile && profile.deathDate) || ssdiDeceased;
+    const isWikiDeceased = !!(profile && profile.deathDate);
     const notFound = !profile || profile.notFound === true || (!profile.title && !profile.extract);
     const hasSSdi = ssdiResults && ssdiResults.length > 0;
     const showWikiBio = (!notFound) && (wikiMatchConfident || isDeceased);
@@ -1227,8 +1228,8 @@ function App() {
               <p className="text-yellow-300 text-sm">No records found in SSDI with middle initial "{nw.middle}". Try searching without it.</p>
             </div>
           )}
-          {!isDeceased && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
-          {isDeceased && (
+          {!isWikiDeceased && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
+          {isWikiDeceased && (
             <>
               <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
                 <p className="text-gray-200 text-xl text-center">This person has passed away.{profile.deathDate && profile.deathDate !== 'deceased' ? ' DOD: ' + profile.deathDate : ''}</p>
