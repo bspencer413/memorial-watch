@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#7C3AED">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Memory Watch">
   <title>Memory Watch</title>
   <meta name="description" content="Memory Watch — A dignified way to find out if someone has passed. Add anyone to your watchlist and get notified when they pass away. Search friends, family, colleagues and celebrities.">
   <meta name="keywords" content="memory watch, death watchlist, obituary alert, death notification, passed away notification, Legacy obituary, Wikipedia deaths, deceased alert, in memoriam">
@@ -53,7 +54,7 @@ const API_BASE = 'https://memorial-watch-backend-2.onrender.com';
 const MW_BG = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Sunset.jpeg';
 const MW_LOGO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/mw_icon.png';
 const BILL_PHOTO = 'https://raw.githubusercontent.com/bspencer413/memorial-watch/main/Bill.jpeg';
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.12';
 const DECEASED_BIRTH_YEAR_THRESHOLD = new Date().getFullYear() - 100;
 const SSDI_CACHE_KEY = 'mw_ssdi_cache';
 
@@ -165,6 +166,12 @@ const fuzzyMatch = (a, b) => {
   return (matches / longer.length) >= 0.8;
 };
 
+const parseBirthYear = (birth_date) => {
+  if (!birth_date) return 9999;
+  var yr = parseInt(extractYear(birth_date) || '0');
+  return yr > 0 ? yr : 9999;
+};
+
 const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthYear, searchSuffix) => {
   let score = 0;
   const rFirst = (result.first_name || '').toUpperCase();
@@ -192,7 +199,7 @@ const scoreResult = (result, searchFirst, searchMiddle, searchLast, searchBirthY
 
 const confidenceLabel = (score) => {
   if (score >= 90) return 'Probable Match';
-  if (score >= 60) return 'Possible Match';
+  if (score >= 60) return 'Potential Match';
   return 'Partial Match';
 };
 
@@ -325,7 +332,8 @@ const SsdiRecordBlock = ({ r }) => {
     </div>
   );
 };
-  function App() {
+
+function App() {
   const [page, setPage] = useState('login');
   const [auth, setAuth] = useState(false);
   const [user, setUser] = useState(null);
@@ -345,6 +353,7 @@ const SsdiRecordBlock = ({ r }) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [nw, setNw] = useState({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
+  const [showMoreFields, setShowMoreFields] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
   const [showDangerZone, setShowDangerZone] = useState(false);
@@ -404,7 +413,6 @@ const SsdiRecordBlock = ({ r }) => {
   const keepAlert = async (notifId, watchlistId, notifName) => {
     const token = localStorage.getItem('token');
     setNotifications(prev => prev.filter(n => n.id !== notifId));
-    // test alerts have no backend record — skip the DELETE if it's a test id
     var isTest = String(notifId).indexOf('test-') === 0;
     if (!isTest) {
       try { await fetch(API_BASE + '/notifications/' + notifId, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + token } }); } catch(e) {}
@@ -449,7 +457,6 @@ const SsdiRecordBlock = ({ r }) => {
     else { openWatchlistDrawer({ name: n.name, id: n.watchlist_id }); }
   };
 
-  // TEST ALERT — injects a synthetic notification using first Watchlist person
   const injectTestAlert = () => {
     const target = watchlist.find(w => !(w.is_deceased === true || w.is_deceased === 1));
     if (!target) { alert('Add someone to your Watchlist first — the test alert needs a real Watchlist entry to work with.'); return; }
@@ -507,6 +514,7 @@ const SsdiRecordBlock = ({ r }) => {
   const clearWatchlistCheck = () => {
     setWatchlistCheck(null); setWatchlistChecked(false);
     setNw({ name: '', middle: '', suffix: '', location: '', birthYear: '' });
+    setShowMoreFields(false);
     setSelectedDisambig(null); setSsdiPage(1); setSsdiDrawer(null);
   };
 
@@ -612,27 +620,26 @@ const SsdiRecordBlock = ({ r }) => {
       setDrawerRefreshing(false);
       return;
     }
-    const [profile, ssdiData] = await Promise.allSettled([
-      fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true })),
-      (() => {
-        var nameParts = watchItem.name.trim().split(/\s+/);
-        var drawerFirst = nameParts[0] || '';
-        var drawerLast = nameParts[nameParts.length - 1] || '';
-        var ssdiSearchName = drawerFirst === drawerLast ? drawerFirst : (drawerFirst + ' ' + drawerLast).trim();
-        var drawerMI = nameParts.length >= 3 ? nameParts.slice(1, -1).join(' ') : '';
-        var ssdiUrl = API_BASE + '/ssdi/search?name=' + encodeURIComponent(ssdiSearchName) + '&offset=0';
-        if (drawerMI) ssdiUrl += '&middle_name=' + encodeURIComponent(drawerMI);
-        return fetch(ssdiUrl, { headers: { 'Authorization': 'Bearer ' + token } })
+    const wikiProfile = await fetchWikiAction(nameWithPeriods).catch(() => ({ notFound: true })) || { notFound: true };
+    var ssdiResults = [];
+    if (watchItem.dob) {
+      var nameParts2 = watchItem.name.trim().split(/\s+/);
+      var drawerFirst2 = nameParts2[0] || '';
+      var drawerLast2 = nameParts2[nameParts2.length - 1] || '';
+      var ssdiSearchName2 = drawerFirst2 === drawerLast2 ? drawerFirst2 : (drawerFirst2 + ' ' + drawerLast2).trim();
+      var drawerMI2 = nameParts2.length >= 3 ? nameParts2.slice(1, -1).join(' ') : '';
+      var ssdiUrl2 = API_BASE + '/ssdi/search?name=' + encodeURIComponent(ssdiSearchName2) + '&offset=0';
+      if (drawerMI2) ssdiUrl2 += '&middle_name=' + encodeURIComponent(drawerMI2);
+      try {
+        const ssdiResp2 = await fetch(ssdiUrl2, { headers: { 'Authorization': 'Bearer ' + token } })
           .then(r => r.ok ? r.json() : { results: [], has_more: false })
           .catch(() => ({ results: [], has_more: false }));
-      })()
-    ]);
-    const wikiProfile = profile.status === 'fulfilled' ? (profile.value || { notFound: true }) : { notFound: true };
-    const ssdi = ssdiData.status === 'fulfilled' ? ssdiData.value : { results: [], has_more: false };
-    const ssdiResults = ssdi.results || [];
+        ssdiResults = (ssdiResp2.results || []).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
+        setSsdiHasMore(ssdiResp2.has_more || false);
+        setSsdiOffset(ssdiResults.length);
+      } catch(e) {}
+    }
     setSsdiAllResults(ssdiResults);
-    setSsdiHasMore(ssdi.has_more || false);
-    setSsdiOffset(ssdiResults.length);
     setDrawerData({ name: watchItem.name, watchlistId: watchItem.id, profile: wikiProfile, ssdiResults, loading: false, newlyDeceased: false, isMemory: false, deathYear: null, dob: watchItem.dob || null, cachedSsdi: null, location: watchItem.location || null });
     setDrawerRefreshing(false);
   };
@@ -645,7 +652,7 @@ const SsdiRecordBlock = ({ r }) => {
       if (r.ok) {
         const data = await r.json();
         const newResults = data.results || [];
-        const combined = ssdiAllResults.concat(newResults);
+        const combined = ssdiAllResults.concat(newResults).slice().sort((a, b) => parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date));
         setSsdiAllResults(combined); setSsdiHasMore(data.has_more || false); setSsdiOffset(combined.length);
         setDrawerData(prev => Object.assign({}, prev, { ssdiResults: combined }));
       }
@@ -670,7 +677,10 @@ const SsdiRecordBlock = ({ r }) => {
         const scored = (data.results || []).map(function(rec) {
           return Object.assign({}, rec, { _score: scoreResult(rec, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) });
         });
-        const combined = watchlistCheck.ssdiResults.concat(scored);
+        const combined = watchlistCheck.ssdiResults.concat(scored).slice().sort((a, b) => {
+          if (b._score !== a._score) return b._score - a._score;
+          return parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date);
+        });
         setWatchlistCheck(Object.assign({}, watchlistCheck, { ssdiResults: combined, ssdiHasMore: data.has_more || false }));
         setSsdiPage(function(p) { return p + 1; });
       }
@@ -738,42 +748,45 @@ const SsdiRecordBlock = ({ r }) => {
       const params = new URLSearchParams({ name: ssdiName });
       if (nw.birthYear) params.append('birth_year', nw.birthYear);
       if (nw.middle) params.append('middle_name', nw.middle.trim());
-      const [ssdiResp, wikiResp] = await Promise.allSettled([
-        fetch(API_BASE + '/ssdi/search?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token } })
-          .then(r => r.ok ? r.json() : { results: [], has_more: false })
-          .catch(() => ({ results: [], has_more: false })),
-        fetchWikiProfile(name).catch(() => ({ isDisambiguation: false, notFound: true }))
-      ]);
-      var ssdiRaw = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.results || []) : [];
-      var ssdiApiHasMore = ssdiResp.status === 'fulfilled' ? (ssdiResp.value.has_more || false) : false;
+      var ssdiRaw = [];
+      var ssdiApiHasMore = false;
       var birthYearFallback = false;
       var noMiMatches = false;
       var hasMi = !!(nw.middle && nw.middle.trim());
       var hasDob = !!(nw.birthYear && nw.birthYear.trim());
-      if (ssdiRaw.length === 0) {
-        if (hasMi && hasDob) {
-          try {
-            const fb = new URLSearchParams({ name: ssdiName });
-            fb.append('middle_name', nw.middle.trim());
-            const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
-          } catch(e) {}
-        } else if (!hasMi && hasDob) {
-          try {
-            const fb = new URLSearchParams({ name: ssdiName });
-            const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
-            if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
-          } catch(e) {}
-        } else if (hasMi && !hasDob) { noMiMatches = true; }
+      const wikiResult = await fetchWikiProfile(name).catch(() => ({ isDisambiguation: false, notFound: true }));
+      const profile = wikiResult || { isDisambiguation: false, notFound: true };
+      const isWikiDeceased = !!(profile && profile.deathDate);
+      if (!isWikiDeceased && (hasMi || hasDob)) {
+        try {
+          const ssdiResp = await fetch(API_BASE + '/ssdi/search?' + params.toString(), { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(r => r.ok ? r.json() : { results: [], has_more: false })
+            .catch(() => ({ results: [], has_more: false }));
+          ssdiRaw = ssdiResp.results || [];
+          ssdiApiHasMore = ssdiResp.has_more || false;
+        } catch(e) {}
+        if (ssdiRaw.length === 0) {
+          if (hasMi && hasDob) {
+            try {
+              const fb = new URLSearchParams({ name: ssdiName });
+              fb.append('middle_name', nw.middle.trim());
+              const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
+              if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
+            } catch(e) {}
+          } else if (!hasMi && hasDob) {
+            try {
+              const fb = new URLSearchParams({ name: ssdiName });
+              const fbResp = await fetch(API_BASE + '/ssdi/search?' + fb.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
+              if (fbResp.ok) { const fbData = await fbResp.json(); if ((fbData.results || []).length > 0) { ssdiRaw = fbData.results || []; ssdiApiHasMore = fbData.has_more || false; birthYearFallback = true; } }
+            } catch(e) {}
+          } else if (hasMi && !hasDob) { noMiMatches = true; }
+        }
       }
       const ssdiResults = ssdiRaw.map(r => Object.assign({}, r, { _score: scoreResult(r, firstName, nw.middle, lastName, nw.birthYear, nw.suffix) })).sort((a, b) => {
         if (b._score !== a._score) return b._score - a._score;
-        const aYear = a.birth_date ? parseInt(a.birth_date.split('/').pop()) : 9999;
-        const bYear = b.birth_date ? parseInt(b.birth_date.split('/').pop()) : 9999;
-        return aYear - bYear;
+        return parseBirthYear(a.birth_date) - parseBirthYear(b.birth_date);
       });
       if (ssdiResults.length === 1) ssdiResults[0]._score = 95;
-      const profile = wikiResp.status === 'fulfilled' ? (wikiResp.value || { isDisambiguation: false, notFound: true }) : { isDisambiguation: false, notFound: true };
       setWatchlistCheck({ profile, name, ssdiResults, ssdiHasMore: ssdiApiHasMore, birthYearFallback, noMiMatches });
       setWatchlistChecked(true);
     } catch (error) {
@@ -877,7 +890,6 @@ const SsdiRecordBlock = ({ r }) => {
   const iClass = "w-full px-4 py-3 border border-purple-900/50 rounded-lg focus:ring-2 focus:ring-purple-500 text-xl bg-gray-900/60 text-white placeholder-gray-400";
   const cardClass = "bg-black/35 rounded-2xl p-4 shadow-lg border border-purple-900/30 backdrop-blur-sm";
   const containerClass = (page === 'about') ? 'w-full max-w-3xl mx-auto px-3' : 'w-full px-3';
-
   const SingleProfileCard = ({ profile, showAddButton, onBack }) => {
     if (!profile || !profile.title) return null;
     const alreadyWatching = isOnWatchlist(profile.title);
@@ -910,6 +922,7 @@ const SsdiRecordBlock = ({ r }) => {
             </div>
           )}
           <div className="p-2 bg-purple-900/20 border border-purple-800/20 rounded-xl">
+            <p className="text-gray-400 text-sm mb-1">Based on publicly available sources.</p>
             <p className="text-purple-200 text-sm">Data provided by Wikipedia. Memory Watch donates a portion of revenues to the Wikimedia Foundation.</p>
           </div>
         </div>
@@ -989,7 +1002,7 @@ const SsdiRecordBlock = ({ r }) => {
                     } catch(e) { alert('Error: ' + e.message); }
                     finally { setLoading(false); }
                   }} disabled={loading} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                    <PlusIcon /> {loading ? 'Moving...' : 'Move to Memories'}
+                    <PlusIcon /> {loading ? 'Saving...' : 'Save as Memory'}
                   </button>
                 </div>
               );
@@ -1032,7 +1045,7 @@ const SsdiRecordBlock = ({ r }) => {
         {visibleResults.map((r, i) => {
           const score = r._score !== undefined ? r._score : 50;
           const conf = confidenceLabel(score);
-          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
+          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Match' ? 'text-yellow-400' : 'text-gray-400';
           return (
             <div key={i} onClick={() => setSsdiDrawer(r)} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
               <div className="flex items-start justify-between">
@@ -1089,7 +1102,11 @@ const SsdiRecordBlock = ({ r }) => {
       return true;
     })();
 
-    const isDeceased = profile && profile.deathDate;
+    const topSsdiResult = ssdiResults && ssdiResults[0];
+    const ssdiDeceased = !!(topSsdiResult && topSsdiResult.death_date) ||
+      !!(topSsdiResult && topSsdiResult.birth_date && parseInt(extractYear(topSsdiResult.birth_date)||'0') > 0 && parseInt(extractYear(topSsdiResult.birth_date)||'0') < DECEASED_BIRTH_YEAR_THRESHOLD);
+    const isDeceased = (profile && profile.deathDate) || ssdiDeceased;
+    const isWikiDeceased = !!(profile && profile.deathDate);
     const notFound = !profile || profile.notFound === true || (!profile.title && !profile.extract);
     const hasSSdi = ssdiResults && ssdiResults.length > 0;
     const showWikiBio = (!notFound) && (wikiMatchConfident || isDeceased);
@@ -1211,8 +1228,27 @@ const SsdiRecordBlock = ({ r }) => {
               <p className="text-yellow-300 text-sm">No records found in SSDI with middle initial "{nw.middle}". Try searching without it.</p>
             </div>
           )}
-          {!isDeceased && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
-          {isDeceased && (
+          {!isWikiDeceased && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
+          {ssdiDeceased && !isWikiDeceased && (
+            <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
+              {fullNameStatus
+                ? <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>
+                : <>
+                    <button onClick={saveSearchedNameToMemories} disabled={loadingMem} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingMem ? 'Saving...' : 'Save "' + buildFullName() + '" to Memories'}
+                    </button>
+                    <button onClick={addSearchedNameToWatchlist} disabled={loadingWl} className="w-full py-3 bg-gray-700/60 border border-gray-500/40 text-gray-200 rounded-xl text-xl flex items-center justify-center gap-2 disabled:opacity-50">
+                      <PlusIcon /> {loadingWl ? 'Adding...' : 'Add to Watchlist instead'}
+                    </button>
+                  </>
+              }
+              <button onClick={() => { setWatchlistChecked(false); setWatchlistCheck(null); setSelectedDisambig(null); setSsdiPage(1); window.scrollTo(0,0); }} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center flex items-center justify-center gap-2">
+                <EditIcon /> Edit Name
+              </button>
+              <button onClick={clearWatchlistCheck} className="w-full py-2 text-white/40 text-xl text-center">Search for another name</button>
+            </div>
+          )}
+          {isWikiDeceased && (
             <>
               <div className="p-2 bg-gray-700/50 border border-gray-600/30 rounded-xl mb-3">
                 <p className="text-gray-200 text-xl text-center">This person has passed away.{profile.deathDate && profile.deathDate !== 'deceased' ? ' DOD: ' + profile.deathDate : ''}</p>
@@ -1333,7 +1369,7 @@ const SsdiRecordBlock = ({ r }) => {
                           {dob && <p className="text-gray-300 text-xl">DOB: {dob}</p>}
                           {deathYear && <p className="text-gray-300 text-xl">DOD: {deathYear}</p>}
                           {location && <p className="text-gray-300 text-xl">Location: {location}</p>}
-                          {!dob && !deathYear && !location && <p className="text-gray-400 text-xl mt-1">No additional details on file.</p>}
+                          {!dob && !deathYear && !location && <p className="text-gray-400 text-xl mt-1">No additional information available at this time.</p>}
                           <p className="text-gray-500 text-sm mt-2">No Wikipedia or SSDI record found.</p>
                         </div>
                       );
@@ -1343,7 +1379,7 @@ const SsdiRecordBlock = ({ r }) => {
                 {!isMemory && (
                   <>
                     {noWikiInfo && (!ssdiResults || ssdiResults.length === 0) ? (
-                      <div className="text-center py-3 mb-3"><p className="text-gray-400 text-xl">No public records found. Monitoring for changes.</p></div>
+                      <div className="text-center py-3 mb-3"><p className="text-gray-400 text-xl">No public records found. Watching for new information.</p></div>
                     ) : noWikiInfo ? null : profile && (
                       <>
                         <div className={'px-4 py-3 rounded-xl mb-3 text-center ' + (profile.deathDate ? 'bg-gray-700' : profile.isDisambiguation ? 'bg-yellow-600' : 'bg-green-700')}>
@@ -1377,7 +1413,7 @@ const SsdiRecordBlock = ({ r }) => {
                           const exactMatch = r.first_name && r.last_name && r.first_name.toUpperCase() === drawerFirst.toUpperCase() && r.last_name.toUpperCase() === drawerLast.toUpperCase();
                           const score = (ssdiResults.length === 1 || exactMatch) ? 95 : rawScore;
                           const conf = confidenceLabel(score);
-                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Possible Match' ? 'text-yellow-400' : 'text-gray-400';
+                          const confColor = conf === 'Probable Match' ? 'text-green-400' : conf === 'Potential Match' ? 'text-yellow-400' : 'text-gray-400';
                           return (
                             <div key={i} onClick={() => { setDrawerData(null); setSsdiDrawer(r); }} className="mb-2 pb-2 border-b border-white/10 last:border-0 cursor-pointer hover:bg-white/5 rounded px-1 transition-colors">
                               <div className="flex items-start justify-between">
@@ -1512,21 +1548,29 @@ const SsdiRecordBlock = ({ r }) => {
             <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.5rem', paddingBottom: '0', pointerEvents: 'none' }}>
               <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2.5rem)', maxWidth: '95%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.9)) brightness(2.0)' }} />
               <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.4rem' }}>Whatever happened to...</p>
+              <p className="text-purple-200 text-center" style={{ fontSize: isPhone ? '1.0rem' : '1.2rem', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginTop: '0.2rem' }}>Search public records to see if they're still with us</p>
             </div>
             <div className={cardClass} style={{ overflowY: 'auto', maxHeight: 'calc(100dvh - ' + PT + ' - 6rem)' }}>
               <div className="mb-1 pb-1 border-b border-purple-900/30" />
               {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
               {!watchlistChecked ? (
                 <div className="space-y-2">
-                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name *" inputClass={iClass} />
-                  <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle Name or Initial — Helpful" inputClass={iClass} />
-                  <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
-                  <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth Year — Helpful" maxLength={4} inputClass={iClass} numeric={true} />
-                  <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
+                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name" inputClass={iClass} />
+                  {!showMoreFields && (
+                    <button onClick={() => setShowMoreFields(true)} className="w-full text-purple-400 text-xl text-center py-1">Add more details (optional)</button>
+                  )}
+                  {showMoreFields && (
+                    <>
+                      <ClearableInput value={nw.middle} onChange={(e) => setNw(Object.assign({}, nw, { middle: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle name or initial (optional)" inputClass={iClass} />
+                      <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
+                      <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth year (optional)" maxLength={4} inputClass={iClass} numeric={true} />
+                      <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
+                    </>
+                  )}
                   <button id="mw-search-btn" onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }} onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
-                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Search'}
+                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Find Out'}
                   </button>
-                  <p className="text-gray-200 text-lg text-center" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>Search Wikipedia and SSDI</p>
+                  <p className="text-gray-400 text-sm text-center">Results are based on publicly available records such as Wikipedia and public databases.</p>
                 </div>
               ) : (
                 <WatchlistCheckCard />
@@ -1616,45 +1660,46 @@ const SsdiRecordBlock = ({ r }) => {
                 <div>
                   <p className="font-bold text-white text-xl">Bill Spencer</p>
                   <p className="text-purple-400 italic text-xl">Idea Hamster</p>
-                  <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl mt-1 block">hello@memorywatch.app</a>
+                  <a href="mailto:bspencer413@me.com" className="text-purple-400 text-xl mt-1 block">bspencer413@me.com</a>
                 </div>
               </div>
               <p className="text-purple-200 text-2xl font-bold italic mb-3">Whatever happened to...</p>
               <div className="space-y-3 text-gray-200 text-xl leading-relaxed">
-                <p>As I get older, I look at the obituaries and wonder about old friends. Did they make it? Are they still out there? "Google it!", they say. They don't know my eyes and fingers.</p>
-                <p>So I built Memory Watch to help you find out whatever happened to long-lost friends, family and even notable people.</p>
-                <p>No games, no search-and-pay, no ads and no more search engine frustration.</p>
+                <p>Old friends. Family. People we once knew. Are they still out there?As we get older, we start to wonder about people from our past. </p>
+                <p>"Google it," they say. But that's not always easy.</p>
+                <p>So we built Memory Watch — a simple way to find out whatever happened to long-lost friends, family, and notable people.</p>
+                <p>No ads. No paywalls. Just simple answers.</p>
               </div>
             </div>
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-4 text-center">How it works</h3>
               <div className="space-y-4">
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span><p className="text-gray-300 text-xl">Enter a name to find out if that person is still with us or not.</p></div>
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span><p className="text-gray-300 text-xl">If the name is not found, you can add it to your Watchlist to be alerted to any information published about them in Wikipedia or SSDI.</p></div>
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span><p className="text-gray-300 text-xl">Should you find the person is no longer with us, you can add their name to a Memories list for future reference.</p></div>
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span><p className="text-gray-300 text-xl">We plan to add a range of different more immediate sources in the future. Your use of this app is FREE. Future updates may require a one-time fee. No subscriptions. No games.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span><p className="text-gray-300 text-xl">Enter a name to see if that person is still with us.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span><p className="text-gray-300 text-xl">If no information is found, you can add them to your Watchlist to be notified of new public information.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span><p className="text-gray-300 text-xl">If they are no longer with us, you can save them to your Memories for future reference.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span><p className="text-gray-300 text-xl">Memory Watch is free to use. Future features may include optional upgrades.</p></div>
               </div>
             </div>
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-3">About Alerts</h3>
               <div className="space-y-2 text-gray-200 text-xl leading-relaxed">
-                <p>When we find new information about someone on your Watchlist, you'll receive an Alert.</p>
-                <p><strong className="text-white">View</strong> — opens their profile with the latest information.</p>
-                <p><strong className="text-white">Keep</strong> — saves this person to your Memories and removes them from your Watchlist.</p>
-                <p><strong className="text-white">Dismiss</strong> — completely removes this person and the alert.</p>
+                <p>When we find new information about someone on your Watchlist, you'll receive an alert.</p>
+                <p><strong className="text-white">View</strong> — see the latest information.</p>
+                <p><strong className="text-white">Keep</strong> — add this person to your Memories.</p>
+                <p><strong className="text-white">Dismiss</strong> — remove this alert.</p>
               </div>
             </div>
             <div className={cardClass}>
               <h3 className="font-bold text-white mb-1 text-2xl">Privacy Policy</h3>
               <p className="text-gray-400 text-xl mb-3">Last updated: March 2026</p>
               <div className="space-y-3 text-gray-200 text-xl leading-relaxed">
-                <p><strong className="text-white">Information We Collect:</strong> Your email address, watchlist names, search queries, and anonymous usage data.</p>
-                <p><strong className="text-white">How We Use It:</strong> We do not sell your personal information. Ever.</p>
-                <p><strong className="text-white">Data Sources:</strong> Search results are powered by Wikipedia and the Social Security Death Index.</p>
-                <p><strong className="text-white">Your Rights:</strong> You may delete your account and all data at any time.</p>
-                <p><strong className="text-white">Minor Protection:</strong> Memory Watch is not intended for searching individuals under 18 years of age.</p>
-                <p><strong className="text-white">Disclaimer:</strong> Information is provided for research purposes only. Memory Watch makes no guarantee of accuracy.</p>
-                <a href="mailto:hello@memorywatch.app" className="text-purple-400 text-xl">hello@memorywatch.app</a>
+                <p><strong className="text-white">We collect:</strong> your email address, watchlist names, search queries, and anonymous usage data.</p>
+                <p><strong className="text-white">How we use it:</strong> We do not sell your personal information. Ever.</p>
+                <p><strong className="text-white">Data sources:</strong> Information is based on publicly available sources, including Wikipedia and the Social Security Death Index.</p>
+                <p><strong className="text-white">Your rights:</strong> You may delete your account and all associated data at any time.</p>
+                <p><strong className="text-white">Minor protection:</strong> Memory Watch is not intended for searching individuals under 18 years of age.</p>
+                <p><strong className="text-white">Disclaimer:</strong> Information is based on publicly available sources and may not always be complete or up to date.</p>
+                <a href="mailto:bspencer413@me.com" className="text-purple-400 text-xl">bspencer413@me.com</a>
               </div>
             </div>
             <div className="px-1 space-y-3 pb-2">
@@ -1675,7 +1720,6 @@ const SsdiRecordBlock = ({ r }) => {
                 </div>
               )}
             </div>
-            {/* Test Alert button — hidden in plain sight near version line */}
             <button onClick={injectTestAlert} className="w-full py-2 text-gray-600 text-sm text-center">Test Alert</button>
             <p className="text-white/30 text-center text-sm pb-4">v{APP_VERSION}</p>
           </div>
