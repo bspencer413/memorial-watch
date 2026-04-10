@@ -551,8 +551,7 @@ function App() {
       if (deathDate && !deathFromCategory) {
         const yr = parseInt(extractYear(deathDate) || '0');
         if (!yr || yr < 1900 || yr > 2030) deathDate = null;
-      }
-      mbiguation: false, deathFromCategory };
+      }return { title, extract, thumbnail, birthDate, deathDate: deceased ? (deathDate || 'deceased') : null, description, isDisambiguation: false, deathFromCategory };
         const isLikelyAlive = /\b(serving|serves|since|current)\b/i.test(description) || /\bborn\b/i.test(extract.split('.')[0]);
         const deceased = deathFromCategory || (!!deathDate && !isLikelyAlive) || isDeceasedCheck(extract, description, deathDate, 'standard');
     } catch(e) { return null; }
