@@ -311,10 +311,10 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const hasYearsInDescription = /\(\d{4}\s*[-\u2013\u2014]+\s*\d{4}\)/.test(description);
   const hasBornOnly = /\([^)]*born\s+\w+\s+\d+,\s+\d{4}\)/.test(firstSentence);
   if (hasBornOnly && !hasDeathInBrackets && !hasYearsInDescription) return false;
-  const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description);
+  const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description) && !/\b(serves|serving|since)\b/i.test(extract);
   const diedInFirstSentence = /\b(died|passed away|deceased)\b/i.test(firstSentence);
   const diedInDescription = /\b(died|passed away|deceased)\b/i.test(description);
-  const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description);
+  const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description) && /\b(died|death|deceased)\b/i.test(description);
   return hasDeathInBrackets || hasYearsInDescription || yearRangeInDesc || isPastTense || diedInFirstSentence || diedInDescription;
 }
 
