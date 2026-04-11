@@ -1109,7 +1109,7 @@ function App() {
     const topSsdiResult = ssdiResults && ssdiResults[0];
     const ssdiDeceased = !!(topSsdiResult && topSsdiResult.death_date) ||
       !!(topSsdiResult && topSsdiResult.birth_date && parseInt(extractYear(topSsdiResult.birth_date)||'0') > 0 && parseInt(extractYear(topSsdiResult.birth_date)||'0') < DECEASED_BIRTH_YEAR_THRESHOLD);
-    const isDeceased = (profile && profile.deathDate) || ssdiDeceased;
+    const isDeceased = (profile && profile.deathDate) || (ssdiDeceased && !wikiMatchConfident);
     const isWikiDeceased = !!(profile && profile.deathDate);
     const notFound = !profile || profile.notFound === true || (!profile.title && !profile.extract);
     const hasSSdi = ssdiResults && ssdiResults.length > 0;
