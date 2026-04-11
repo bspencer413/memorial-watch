@@ -554,7 +554,7 @@ function App() {
         const yr = parseInt(extractYear(deathDate) || '0');
         if (!yr || yr < 1900 || yr > 2030) deathDate = null;
       }
-      const isLikelyAlive = /\b(serving|serves|since|current|retired)\b/i.test(description) || /chief justice|associate justice/i.test(description) || /\bborn\b/i.test(extract.split('.')[0]);
+      const isLikelyAlive =/\b(serving|serves|since|current|retired)\b/i.test(description) || /\bretired\b/i.test(extract)|| /chief justice|associate justice/i.test(description) || /\bborn\b/i.test(extract.split('.')[0]);
       if (isLikelyAlive) deathDate = null;
       const deceased = deathFromCategory || (!!deathDate && !isLikelyAlive) || isDeceasedCheck(extract, description, deathDate, 'standard');
       return { title, extract, thumbnail, birthDate, deathDate: deceased ? (deathDate || 'deceased') : null, description, isDisambiguation: false, deathFromCategory };
