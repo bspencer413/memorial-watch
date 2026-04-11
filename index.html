@@ -314,7 +314,6 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const isPastTense = /^[^.]*\bwas (an?|the)\b[^.]*\./.test(extract) && !/\([^)]*born/.test(firstSentence) && !/born\s+\d{4}/.test(description) && !/\b(serves|serving|since|has served|has been)\b/i.test(extract);
   const diedInFirstSentence = /\b(died|passed away|deceased)\b/i.test(firstSentence);
   const diedInDescription = /\b(died|passed away|deceased)\b/i.test(description);
-  const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description);
   const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description) && /\b(died|death|deceased)\b/i.test(description);
   return hasDeathInBrackets || isPastTense || diedInFirstSentence || diedInDescription;
 }
@@ -1670,17 +1669,17 @@ const r = await fetch(API_BASE + '/watchlist/' + id, { method: 'DELETE', headers
               </div>
               <p className="text-purple-200 text-2xl font-bold italic mb-3">Whatever happened to...</p>
               <div className="space-y-3 text-gray-200 text-xl leading-relaxed">
-                <p>Old friends. Family. People we once knew. Are they still out there?As we get older, we start to wonder about people from our past. </p>
-                <p>"Google it," they say. But that's not always easy.</p>
-                <p>So we built Memory Watch — a simple way to find out whatever happened to long-lost friends, family, and notable people.</p>
+                <p>As we get older, we start to wonder about people from our past.  Old friends Family People we once knew of. Are they still out there?. </p>
+                <p>"Google it," they say. But that's easier said than done.</p>
+                <p>So we built Memory Watch — a dignified, simple way to find out whatever happened to people once part of our lives.</p>
                 <p>No ads. No paywalls. Just simple answers.</p>
               </div>
             </div>
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-4 text-center">How it works</h3>
               <div className="space-y-4">
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span><p className="text-gray-300 text-xl">Enter a name to search public records to see if they're still with us.</p></div>
-                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span><p className="text-gray-300 text-xl">If no information is found, you can add them to your Watchlist to be notified of new public information.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">1.</span><p className="text-gray-300 text-xl">Enter a name to FIND public records and see if they're still with us.</p></div>
+                <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">2.</span><p className="text-gray-300 text-xl">If Likely Alive or no information is found, you add more details or you can add them to your Watchlist to be notified of new public information.</p></div>
                 <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">3.</span><p className="text-gray-300 text-xl">If they are no longer with us, you can save them to your Memories for future reference.</p></div>
                 <div className="flex gap-3 items-start"><span className="text-purple-400 text-2xl font-black w-7 shrink-0">4.</span><p className="text-gray-300 text-xl">Memory Watch is free to use. Future features may include optional upgrades.</p></div>
               </div>
@@ -1697,7 +1696,7 @@ const r = await fetch(API_BASE + '/watchlist/' + id, { method: 'DELETE', headers
             <div className={cardClass}>
               <h3 className="text-white text-2xl font-bold mb-3">About Alerts</h3>
               <div className="space-y-2 text-gray-200 text-xl leading-relaxed">
-                <p>The most vital purpose of Memory Watch is the Watchlist. If the person you are looking for is likely alive, or not found, add them to your Watchlist. When we find new information about them, you'll see the Alert bell on the control bar.</p>
+                <p>A key feature of Memory Watch is the Watchlist. If the person is Likely Alive, or no information is found, you can add them to your Watchlist. When we find new information about them, you'll see an Alert in the app.</p>
                 <p><strong className="text-white">View</strong> — see the latest information.</p>
                 <p><strong className="text-white">Keep</strong> — add this person to your Memories.</p>
                 <p><strong className="text-white">Dismiss</strong> — remove this alert.</p>
