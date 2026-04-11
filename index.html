@@ -1547,21 +1547,11 @@ function App() {
           </div>
         )}
 
-        {page === 'search' && (
-          <div className="space-y-3" style={{ paddingTop: PT }}>
-            <div className="flex flex-col items-center justify-center" style={{ height: PT, marginTop: '-' + PT, paddingTop: '0.5rem', paddingBottom: '0', pointerEvents: 'none' }}>
-              <img src={MW_LOGO} alt="Memory Watch" onError={(e) => { e.target.style.display = 'none'; }} style={{ width: 'auto', height: 'calc(' + PT + ' - 2.5rem)', maxWidth: '95%', objectFit: 'contain', filter: 'drop-shadow(0 6px 24px rgba(124,58,237,0.9)) brightness(2.0)' }} />
-              <p className="text-purple-300 font-bold italic text-center" style={{ fontSize: isPhone ? '1.6rem' : '2.2rem', whiteSpace: 'nowrap', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginTop: '0.4rem' }}>Whatever happened to...</p>
-              <p className="text-purple-200 text-center" style={{ fontSize: isPhone ? '1.0rem' : '1.2rem', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginTop: '0.2rem' }}>Search public records to see if they're still with us</p>
-            </div>
-            <div className={cardClass} style={{ overflowY: 'auto', maxHeight: 'calc(100dvh - ' + PT + ' - 6rem)' }}>
-              <div className="mb-1 pb-1 border-b border-purple-900/30" />
-              {watchlistChecking && <p className="text-white text-center py-4 animate-pulse text-xl">Searching...</p>}
-              {!watchlistChecked ? (
-                <div className="space-y-2">
-                  <ClearableInput value={nw.name} onChange={(e) => setNw(Object.assign({}, nw, { name: e.target.value }))} onBlur={(e) => setNw(Object.assign({}, nw, { name: toTitleCase(e.target.value.trim()) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="First and Last Name" inputClass={iClass} />
+       <button id="mw-search-btn" onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }} onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
+                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Find Out'}
+                  </button>
                   {!showMoreFields && (
-                    <button onClick={() => setShowMoreFields(true)} className="w-full text-purple-400 text-xl text-center py-1">Add more details (optional)</button>
+                    <button onClick={() => setShowMoreFields(true)} className="w-full py-2 bg-gray-800/60 border border-purple-900/30 text-purple-400 text-xl text-center rounded-lg">+ Add more details (optional)</button>
                   )}
                   {showMoreFields && (
                     <>
@@ -1571,17 +1561,6 @@ function App() {
                       <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location — City, State or Country" inputClass={iClass} />
                     </>
                   )}
-                  <button id="mw-search-btn" onFocus={() => { setTimeout(() => { var el = document.getElementById('mw-search-btn'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 350); }} onClick={checkWatch} disabled={watchlistChecking} className="w-full py-3 bg-purple-600 text-white rounded-lg flex items-center justify-center gap-2 disabled:opacity-50 text-2xl font-bold">
-                    <SearchIcon /> {watchlistChecking ? 'Searching...' : 'Find Out'}
-                  </button>
-                  <p className="text-gray-400 text-sm text-center">Results are based on publicly available records.</p>
-                </div>
-              ) : (
-                <WatchlistCheckCard />
-              )}
-            </div>
-          </div>
-        )}
 
         {page === 'memories' && (
           <div className="space-y-3" style={{ paddingTop: "1rem" }}>
