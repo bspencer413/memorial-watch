@@ -1233,7 +1233,7 @@ function App() {
             </div>
           )}
           {!isWikiDeceased && !wikiMatchConfident && <SSIDResultsBlock ssdiResults={ssdiResults} searchFirst={searchFirst} searchMiddle={nw.middle} searchLast={searchLast} searchBirthYear={nw.birthYear} searchSuffix={nw.suffix} apiHasMore={watchlistCheck && watchlistCheck.ssdiHasMore} onLoadMore={loadMoreSsdiSearch} birthYearFallback={watchlistCheck && watchlistCheck.birthYearFallback} />}
-          {ssdiDeceased && !isWikiDeceased && (
+          {ssdiDeceased && !isWikiDeceased && !wikiMatchConfident && (
             <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
               {fullNameStatus
                 ? <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>
