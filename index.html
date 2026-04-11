@@ -315,6 +315,7 @@ function isDeceasedCheck(extract, description, deathDate, type) {
   const diedInFirstSentence = /\b(died|passed away|deceased)\b/i.test(firstSentence);
   const diedInDescription = /\b(died|passed away|deceased)\b/i.test(description);
   const yearRangeInDesc = /\(\d{4}[-\u2013\u2014]+\d{4}\)/.test(description) && /\b(died|death|deceased)\b/i.test(description);
+  console.log('panetta:', hasDeathInBrackets, isPastTense, diedInFirstSentence, diedInDescription, hasBornOnly, hasYearsInDescription);
   return hasDeathInBrackets || isPastTense || diedInFirstSentence || diedInDescription;
 }
 
