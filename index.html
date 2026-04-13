@@ -557,7 +557,7 @@ function App() {
       }
       const isLikelyAlive =/\b(serving|serves|since|current|retired)\b/i.test(description) || /\bretired\b/i.test(extract)|| /chief justice|associate justice/i.test(description) || /\bborn\b/i.test(extract.split('.')[0]);
       if (isLikelyAlive) deathDate = null;
-      const deceased = deathFromCategory || (!!deathDate && !isLikelyAlive) || isDeceasedCheck(extract, description, deathDate, 'standard');
+      const deceased = (deathFromCategory && !isLikelyAlive) || (!!deathDate && !isLikelyAlive) || (!isLikelyAlive && isDeceasedCheck(extract, description, deathDate, 'standard'));
       return { title, extract, thumbnail, birthDate, deathDate: deceased ? (deathDate || 'deceased') : null, description, isDisambiguation: false, deathFromCategory };
     } catch(e) { return null; }
   };
