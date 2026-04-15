@@ -1117,7 +1117,7 @@ function App() {
     const showWikiBio = (!notFound) && (wikiMatchConfident || isDeceased);
     const showBanner = showWikiBio || (!hasSSdi && notFound);
     const bannerBg = isDeceased ? 'bg-gray-800' : (!notFound && wikiMatchConfident ? 'bg-green-700' : 'bg-blue-700');
-    const bannerText = isDeceased ? 'Passed Away' : (!notFound && wikiMatchConfident ? 'Likely Alive — No public record of passing found' : 'Name Not Found');
+    const bannerText = isDeceased ? 'Passed Away' : (!notFound && wikiMatchConfident ? 'No sign of passing found in public records' : 'Name Not Found');
 
     if (profile && profile.isDisambiguation === true) {
       if (selectedDisambig) {
