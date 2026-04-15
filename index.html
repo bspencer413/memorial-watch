@@ -1093,7 +1093,7 @@ function App() {
 
     const wikiMatchConfident = (() => {
       if (!profile || profile.notFound || profile.isDisambiguation || !profile.title) return false;
-      if (/\(.*\)/.test(profile.title)) return false;
+      if (/\(.*\)/.test(profile.title)) { console.log('title has parens, not confident:', profile.title); return false; }
       const titleWords = profile.title.toLowerCase().split(/\s+/);
       const titleFirst = titleWords[0] || '';
       const titleLast = titleWords[titleWords.length - 1] || '';
