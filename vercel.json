@@ -3,6 +3,8 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "routes": [
+    { "src": "/support", "dest": "/support.html" },
+    { "src": "/support.html", "dest": "/support.html" }
     { "src": "/privacy", "dest": "/privacy.html" },
     { "src": "/privacy.html", "dest": "/privacy.html" }
   ]
