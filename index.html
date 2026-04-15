@@ -607,8 +607,6 @@ function App() {
       const searchLast = searchWords[searchWords.length - 1];
       const titleLast = titleWords[titleWords.length - 1];
       if (!fuzzyMatch(searchLast, titleLast)) return { isDisambiguation: false, notFound: true };
-      const exactFirstMatch = searchFirst === titleFirst || (searchFirst.length >= 5 && titleFirst.startsWith(searchFirst.slice(0, 5)));
-      if (!exactFirstMatch) return { isDisambiguation: false, notFound: true };
     return result;
     } catch(e) { return { isDisambiguation: false, notFound: true }; }
   };
