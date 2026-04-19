@@ -611,6 +611,7 @@ function App() {
       const searchLast = searchWords[searchWords.length - 1];
       const titleLast = titleWords[titleWords.length - 1];
       if (!fuzzyMatch(searchLast, titleLast)) return { isDisambiguation: false, notFound: true };
+      console.log('lastcheck:', searchLast, titleLast, fuzzyMatch(searchLast, titleLast));
       return result;
     } catch(e) { return { isDisambiguation: false, notFound: true }; }
   };
