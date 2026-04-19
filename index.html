@@ -679,8 +679,8 @@ function App() {
     setSsdiLoadingMore(true);
     try {
       const token = localStorage.getItem('token');
-      const firstName = (nw.name || '').trim().split(/\s+/)[0];
-      const lastName = (nw.name || '').trim().split(/\s+/).slice(-1)[0];
+      const firstName = smartTitleCase(nw.name.trim().split(/\s+/)[0]);
+      const lastName = smartTitleCase(nw.name.trim().split(/\s+/).slice(-1)[0]);
       const ssdiName = firstName === lastName ? firstName : (firstName + ' ' + lastName).trim();
       const params = new URLSearchParams({ name: ssdiName });
       if (nw.birthYear) params.append('birth_year', nw.birthYear);
