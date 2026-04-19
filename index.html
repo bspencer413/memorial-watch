@@ -1289,14 +1289,9 @@ function App() {
             <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
               {fullNameStatus
                 ? <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>
-                : <>
-                    <button onClick={saveSearchedNameToMemories} disabled={loadingMem} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                      <PlusIcon /> {loadingMem ? 'Saving...' : 'Save "' + buildFullName() + '" to Memories'}
-                    </button>
-                    <button onClick={addSearchedNameToWatchlist} disabled={loadingWl} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
-                      <PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}
-                    </button>
-                  </>
+                : <button onClick={saveSearchedNameToMemories} disabled={loadingMem} className="w-full py-4 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50">
+                    <PlusIcon /> {loadingMem ? 'Saving...' : 'Save "' + buildFullName() + '" to Memories'}
+                  </button>
               }
               <button onClick={() => { setWatchlistChecked(false); setWatchlistCheck(null); setSelectedDisambig(null); setSsdiPage(1); window.scrollTo(0,0); }} className="w-full py-3 bg-white/10 border border-white/20 text-white/80 rounded-xl text-xl text-center flex items-center justify-center gap-2">
                 <EditIcon /> Edit Name
@@ -1338,12 +1333,7 @@ function App() {
           )}
           {!isDeceased && (
             <div className="space-y-2 mt-2 border-t border-white/10 pt-2">
-             {hasSSdi && <p className="text-gray-400 text-xl text-center font-bold">Tap a name above to select them.</p>}
-              {!hasSSdi && wikiMatchConfident && !notFound && (
-                fullNameStatus
-                  ? <p className="w-full py-3 text-center text-green-400 text-2xl font-bold">Already in your {fullNameStatus}</p>
-                  : <button onClick={addSearchedNameToWatchlist} disabled={loadingWl} className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-2xl flex items-center justify-center gap-2 disabled:opacity-50"><PlusIcon /> {loadingWl ? 'Adding...' : 'Add "' + buildFullName() + '" to Watchlist'}</button>
-              )}
+              {hasSSdi && <p className="text-gray-400 text-xl text-center font-bold">Tap a name above to select them.</p>}
               {!hasSSdi && notFound && (
                 <>
                   {(nw.middle || nw.birthYear) ? (
@@ -1648,7 +1638,7 @@ function App() {
                       <ClearableInput value={nw.middle} onChange={(e) => { var v = e.target.value; if (v.length >= 1) v = v.charAt(0).toUpperCase() + v.slice(1); setNw(Object.assign({}, nw, { middle: v })); }} onBlur={(e) => { var v = e.target.value.trim(); setNw(Object.assign({}, nw, { middle: v.length === 1 ? v.toUpperCase() : v })); }} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Middle name or initial (optional)" inputClass={iClass} />
                       <ClearableInput value={nw.suffix} onChange={(e) => setNw(Object.assign({}, nw, { suffix: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Suffix: Jr., Sr., MD, III" inputClass={iClass} />
                       <ClearableInput value={nw.birthYear} onChange={(e) => setNw(Object.assign({}, nw, { birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Birth year (optional)" maxLength={4} inputClass={iClass} numeric={true} />
-                      <ClearableInput value={nw.location} onChange={(e) => setNw(Object.assign({}, nw, { location: e.target.value }))} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location -- City, State or Country" inputClass={iClass} />
+                      <ClearableInput value={nw.location} onChange={(e) => { const val = e.target.value; const words = val.split(' '); const capped = words.map((w, i) => i < words.length - 1 ? toTitleCase(w) : w.charAt(0).toUpperCase() + w.slice(1)).join(' '); setNw(Object.assign({}, nw, { location: capped })); }} onKeyPress={(e) => e.key === 'Enter' && checkWatch()} placeholder="Location -- City, State or Country" inputClass={iClass} />
                     </>
                   )}
                   <p className="text-gray-400 text-sm text-center">Results are based on publicly available records.</p>
