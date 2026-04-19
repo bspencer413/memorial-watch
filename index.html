@@ -597,9 +597,10 @@ function App() {
       const nameWithPeriods = addInitialPeriods(name.trim());
       let result = null;
       try { result = await fetchWikiAction(nameWithPeriods); } catch(e) {}
-      if (!result) {
-       try { result = await fetchWikiAction(name.trim().toLowerCase()); } catch(e) {}
+     if (!result) {
+        try { result = await fetchWikiAction(name.trim().toLowerCase()); } catch(e) {}
       }
+      console.log('wiki raw:', result && result.title);
       if (!result) return { isDisambiguation: false, notFound: true };
       if (result.type === 'disambiguation') {
         let matches = [];
